@@ -171,13 +171,13 @@
       <select id="pcat" onchange="renderProducts()"><option value="">All categories</option></select>
       <select id="pstat" onchange="renderProducts()"><option value="">All statuses</option></select>
       <select id="pbuyer" onchange="renderProducts()"><option value="">All buyers</option></select>
-      <select id="pmcat" onchange="renderProducts()"><option value="">All medical groups</option></select>
+      <select id="pmcat" onchange="catChanged()"><option value="">All categories</option></select>
+      <select id="pmsub" onchange="renderProducts()"><option value="">All sub-categories</option></select>
       <select id="psort" onchange="renderProducts()"><option value="ref">Sort: Ref</option><option value="name">Sort: Name A→Z</option><option value="group">Sort: Category ▸ sub-category</option></select>
     </div>
     <div id="pickbar" style="display:flex;align-items:center;gap:10px;background:#eef5ff;border:1px solid #cfe0f5;border-radius:8px;padding:8px 12px;margin-bottom:12px;flex-wrap:wrap">
       <b id="pickCount">0 selected</b>
       <button class="btn sm green" onclick="openRfqBuilder()">Build RFQ list ▸</button>
-      <button class="btn sm ghost" onclick="pickRandomPrompt()">Pick random…</button>
       <button class="btn sm ghost" onclick="clearPicks()">Clear</button>
       <span class="hint">Tick products to build a quotation list (with images &amp; description) for suppliers — in English or 中文.</span>
     </div>
@@ -394,6 +394,12 @@ function renderDash(){
 /* ---------- render: products ---------- */
 function mcatOf(p){if(!p.specs)return '';return (p.specs.split(' · ')[0]||'').trim();}
 function msubOf(p){if(!p.specs)return '';const s=(p.specs.split(' · ')[1]||'').trim();return (s&&!s.startsWith('Brand:')&&!s.startsWith('HR:'))?s:'';}
+function fillSubFilter(){
+  const cat=document.getElementById('pmcat').value, cur=document.getElementById('pmsub').value;
+  const subs=[...new Set(S.products.filter(p=>!cat||mcatOf(p)===cat).map(msubOf).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  document.getElementById('pmsub').innerHTML='<option value="">All sub-categories</option>'+subs.map(s=>`<option ${s===cur?'selected':''}>${esc(s)}</option>`).join('');
+}
+function catChanged(){document.getElementById('pmsub').value='';fillSubFilter();renderProducts();}
 function fillFilters(){
   const sel=id=>document.getElementById(id);
   sel('pcat').innerHTML='<option value="">All categories</option>'+CATS.map(c=>`<option>${c.k}</option>`).join('');
@@ -401,16 +407,18 @@ function fillFilters(){
   sel('pstat').innerHTML='<option value="">All statuses</option>'+STATUSES.map(s=>`<option value="${s}">${STLABEL[s]}</option>`).join('');
   sel('pbuyer').innerHTML='<option value="">All buyers</option>'+S.buyers.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');
   const curM=sel('pmcat').value, mcats=[...new Set(S.products.map(mcatOf).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-  sel('pmcat').innerHTML='<option value="">All medical groups</option>'+mcats.map(m=>`<option ${m===curM?'selected':''}>${esc(m)}</option>`).join('');
+  sel('pmcat').innerHTML='<option value="">All categories</option>'+mcats.map(m=>`<option ${m===curM?'selected':''}>${esc(m)}</option>`).join('');
+  fillSubFilter();
   sel('expBuyer').innerHTML='<option value="">All buyers (full list)</option>'+S.buyers.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');
 }
 function renderProducts(){
   const q=(document.getElementById('psearch').value||'').toLowerCase();
   const fc=document.getElementById('pcat').value,fs=document.getElementById('pstat').value,fb=document.getElementById('pbuyer').value;
-  const fm=document.getElementById('pmcat').value,sortBy=document.getElementById('psort').value;
+  const fm=document.getElementById('pmcat').value,fsub=document.getElementById('pmsub').value,sortBy=document.getElementById('psort').value;
   let rows=S.products.filter(p=>{
     if(fc&&p.category!==fc)return false;if(fs&&p.status!==fs)return false;if(fb&&p.buyerId!==fb)return false;
     if(fm&&mcatOf(p)!==fm)return false;
+    if(fsub&&msubOf(p)!==fsub)return false;
     if(q&&!((p.name+' '+(p.ref||'')+' '+(p.specs||'')).toLowerCase().includes(q)))return false;return true;});
   if(sortBy==='name')rows.sort((a,b)=>String(a.name).localeCompare(String(b.name),undefined,{sensitivity:'base'}));
   else if(sortBy==='group')rows.sort((a,b)=>mcatOf(a).localeCompare(mcatOf(b))||msubOf(a).localeCompare(msubOf(b))||String(a.ref||'').localeCompare(String(b.ref||''),undefined,{numeric:true}));
@@ -664,18 +672,10 @@ function exportQuoteSheet(){
 function backup(){download('interpoint-backup-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(S,null,2),'application/json')}
 
 /* ---------- RFQ builder: you pick products; export with images + description, EN/中文 ---------- */
-function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function updatePickbar(){const el=document.getElementById('pickCount');if(el)el.textContent=rfqPick.size+' selected';}
 function togglePick(id){rfqPick.has(id)?rfqPick.delete(id):rfqPick.add(id);updatePickbar();}
 function clearPicks(){rfqPick.clear();renderProducts();}
 function pickAllVisible(on){lastFilteredIds.forEach(id=>on?rfqPick.add(id):rfqPick.delete(id));renderProducts();}
-function pickRandomPrompt(){
-  const v=prompt('How many random products to add to the list?','50');if(v===null)return;
-  const n=parseInt(v);if(!n||n<1)return;
-  const pool=shuffle(S.products.slice());
-  pool.slice(0,Math.min(n,pool.length)).forEach(p=>rfqPick.add(p.id));
-  renderProducts();show('products');
-}
 function rfqSelected(){return S.products.filter(p=>rfqPick.has(p.id));}
 const RFQ_L={
   en:{title:'Request for Quotation',sub:'Please fill in the blank columns and return this sheet.',no:'No.',img:'Image',ref:'Ref',name:'Product',desc:'Description',url:'Product URL',imgurl:'Image URL',link:'Link',view:'Open',qty:'Required Qty',price:'Unit Price (EUR)',moq:'MOQ',lead:'Lead Time',incoterm:'Incoterm',sample:'Sample Cost (EUR)',remark:'Remarks',supplier:'Supplier',date:'Date',from:'From'},
