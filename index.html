@@ -677,6 +677,16 @@ function togglePick(id){rfqPick.has(id)?rfqPick.delete(id):rfqPick.add(id);updat
 function clearPicks(){rfqPick.clear();renderProducts();}
 function pickAllVisible(on){lastFilteredIds.forEach(id=>on?rfqPick.add(id):rfqPick.delete(id));renderProducts();}
 function rfqSelected(){return S.products.filter(p=>rfqPick.has(p.id));}
+const RFQ_SHARE_BASE='https://jarrodliu-code.github.io/Interpoint/rfq.html';
+function copyRfqLink(){
+  const items=rfqSelected();if(!items.length){alert('Select products first.');return;}
+  const lang=document.getElementById('rfqLang').value;
+  const url=RFQ_SHARE_BASE+'?lang='+lang+'&ids='+items.map(p=>p.id).join(',');
+  const out=document.getElementById('rfqLinkOut');
+  const show=ok=>{out.innerHTML=(ok?'<b style="color:var(--ok)">✓ Link copied — paste into WeChat.</b>':'<b>Copy this link:</b>')+`<div style="word-break:break-all;font-size:11px;margin-top:4px;background:#fff;border:1px solid var(--line);border-radius:6px;padding:6px"><a href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a></div>`;};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(()=>show(true)).catch(()=>show(false));}
+  else show(false);
+}
 const RFQ_L={
   en:{title:'Request for Quotation',sub:'Please fill in the blank columns and return this sheet.',no:'No.',img:'Image',ref:'Ref',name:'Product',desc:'Description',url:'Product URL',imgurl:'Image URL',link:'Link',view:'Open',qty:'Required Qty',price:'Unit Price (EUR)',moq:'MOQ',lead:'Lead Time',incoterm:'Incoterm',sample:'Sample Cost (EUR)',remark:'Remarks',supplier:'Supplier',date:'Date',from:'From'},
   zh:{title:'询价单',sub:'请填写空白栏并回传此表。',no:'序号',img:'图片',ref:'编号',name:'产品',desc:'描述',url:'产品链接',imgurl:'图片链接',link:'链接',view:'查看',qty:'需求数量',price:'单价(欧元)',moq:'最小起订量',lead:'交货期',incoterm:'贸易术语',sample:'样品费(欧元)',remark:'备注',supplier:'供应商',date:'日期',from:'来自'}
@@ -687,7 +697,13 @@ function openRfqBuilder(){
   const body=`<p class="hint" style="margin-top:0"><b>${items.length}</b> products selected for this quotation list.</p>
     <div class="grid2"><div class="fld"><label>Language</label><select id="rfqLang"><option value="en">English</option><option value="zh">中文 (Chinese)</option></select></div>
     <div class="fld"><label>Format</label><select id="rfqFmt"><option value="html">Printable sheet with images (HTML)</option><option value="csv">Spreadsheet (CSV)</option></select></div></div>
-    <div class="hint">The printable sheet shows each product's image &amp; description with blank quote columns. Open it and print to PDF, or send the file. Target price is never included.</div>
+    <div style="background:#eef5ff;border:1px solid #cfe0f5;border-radius:8px;padding:10px;margin:10px 0">
+      <b>📲 Share to WeChat / online (recommended):</b>
+      <button class="btn sm green" style="margin-left:6px" onclick="copyRfqLink()">🔗 Copy shareable link</button>
+      <div class="hint" style="margin-top:5px">Opens as a web page for your supplier — images show and links work, nothing to download. Best for WeChat.</div>
+      <div id="rfqLinkOut" class="hint" style="margin-top:6px"></div>
+    </div>
+    <div class="hint">Or download a file (for email): the printable sheet shows each product's image &amp; description with blank quote columns. Target price is never included.</div>
     <div style="max-height:220px;overflow:auto;margin-top:12px;border:1px solid var(--line);border-radius:8px"><table><tbody>${items.slice(0,200).map(p=>`<tr><td style="width:42px">${p.image?`<img src="${esc(p.image)}" loading="lazy" style="width:32px;height:32px;object-fit:cover;border-radius:4px">`:''}</td><td class="muted" style="font-size:12px;white-space:nowrap">${esc(p.ref||'')}</td><td style="font-size:12.5px">${esc(p.name)}</td><td class="right"><button class="btn sm danger" onclick="rfqPick.delete('${p.id}');openRfqBuilder();renderProducts()">✕</button></td></tr>`).join('')}</tbody></table>${items.length>200?`<div class="hint" style="padding:8px">…and ${items.length-200} more</div>`:''}</div>`;
   const foot=`<button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn green" onclick="exportRfqDoc()">⬇ Generate &amp; download</button>`;
   openModal('Build RFQ list',body,foot);
