@@ -171,6 +171,8 @@
       <select id="pcat" onchange="renderProducts()"><option value="">All categories</option></select>
       <select id="pstat" onchange="renderProducts()"><option value="">All statuses</option></select>
       <select id="pbuyer" onchange="renderProducts()"><option value="">All buyers</option></select>
+      <select id="pmcat" onchange="renderProducts()"><option value="">All medical groups</option></select>
+      <select id="psort" onchange="renderProducts()"><option value="ref">Sort: Ref</option><option value="name">Sort: Name A→Z</option><option value="group">Sort: Category ▸ sub-category</option></select>
     </div>
     <div id="pickbar" style="display:flex;align-items:center;gap:10px;background:#eef5ff;border:1px solid #cfe0f5;border-radius:8px;padding:8px 12px;margin-bottom:12px;flex-wrap:wrap">
       <b id="pickCount">0 selected</b>
@@ -390,21 +392,29 @@ function renderDash(){
 }
 
 /* ---------- render: products ---------- */
+function mcatOf(p){if(!p.specs)return '';return (p.specs.split(' · ')[0]||'').trim();}
+function msubOf(p){if(!p.specs)return '';const s=(p.specs.split(' · ')[1]||'').trim();return (s&&!s.startsWith('Brand:')&&!s.startsWith('HR:'))?s:'';}
 function fillFilters(){
   const sel=id=>document.getElementById(id);
   sel('pcat').innerHTML='<option value="">All categories</option>'+CATS.map(c=>`<option>${c.k}</option>`).join('');
   sel('impCat').innerHTML=CATS.map(c=>`<option>${c.k}</option>`).join('');
   sel('pstat').innerHTML='<option value="">All statuses</option>'+STATUSES.map(s=>`<option value="${s}">${STLABEL[s]}</option>`).join('');
   sel('pbuyer').innerHTML='<option value="">All buyers</option>'+S.buyers.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');
+  const curM=sel('pmcat').value, mcats=[...new Set(S.products.map(mcatOf).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  sel('pmcat').innerHTML='<option value="">All medical groups</option>'+mcats.map(m=>`<option ${m===curM?'selected':''}>${esc(m)}</option>`).join('');
   sel('expBuyer').innerHTML='<option value="">All buyers (full list)</option>'+S.buyers.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');
 }
 function renderProducts(){
   const q=(document.getElementById('psearch').value||'').toLowerCase();
   const fc=document.getElementById('pcat').value,fs=document.getElementById('pstat').value,fb=document.getElementById('pbuyer').value;
+  const fm=document.getElementById('pmcat').value,sortBy=document.getElementById('psort').value;
   let rows=S.products.filter(p=>{
     if(fc&&p.category!==fc)return false;if(fs&&p.status!==fs)return false;if(fb&&p.buyerId!==fb)return false;
+    if(fm&&mcatOf(p)!==fm)return false;
     if(q&&!((p.name+' '+(p.ref||'')+' '+(p.specs||'')).toLowerCase().includes(q)))return false;return true;});
-  rows.sort((a,b)=>{const ca=CATS.findIndex(c=>c.k===a.category),cb=CATS.findIndex(c=>c.k===b.category);if(ca!==cb)return ca-cb;return String(a.ref||'').localeCompare(String(b.ref||''),undefined,{numeric:true,sensitivity:'base'});});
+  if(sortBy==='name')rows.sort((a,b)=>String(a.name).localeCompare(String(b.name),undefined,{sensitivity:'base'}));
+  else if(sortBy==='group')rows.sort((a,b)=>mcatOf(a).localeCompare(mcatOf(b))||msubOf(a).localeCompare(msubOf(b))||String(a.ref||'').localeCompare(String(b.ref||''),undefined,{numeric:true}));
+  else rows.sort((a,b)=>{const ca=CATS.findIndex(c=>c.k===a.category),cb=CATS.findIndex(c=>c.k===b.category);if(ca!==cb)return ca-cb;return String(a.ref||'').localeCompare(String(b.ref||''),undefined,{numeric:true,sensitivity:'base'});});
   lastFilteredIds=rows.map(p=>p.id);
   const CAP=300,shown=rows.slice(0,CAP);
   document.getElementById('pbody').innerHTML=shown.map(p=>{
