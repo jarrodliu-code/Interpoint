@@ -170,8 +170,15 @@
       <select id="pstat" onchange="renderProducts()"><option value="">All statuses</option></select>
       <select id="pbuyer" onchange="renderProducts()"><option value="">All buyers</option></select>
     </div>
+    <div id="pickbar" style="display:flex;align-items:center;gap:10px;background:#eef5ff;border:1px solid #cfe0f5;border-radius:8px;padding:8px 12px;margin-bottom:12px;flex-wrap:wrap">
+      <b id="pickCount">0 selected</b>
+      <button class="btn sm green" onclick="openRfqBuilder()">Build RFQ list ▸</button>
+      <button class="btn sm ghost" onclick="pickRandomPrompt()">Pick random…</button>
+      <button class="btn sm ghost" onclick="clearPicks()">Clear</button>
+      <span class="hint">Tick products to build a quotation list (with images &amp; description) for suppliers — in English or 中文.</span>
+    </div>
     <div class="panel"><div class="pb" style="padding:0;overflow:auto">
-      <table><thead><tr><th>Ref</th><th>Product</th><th>Category</th><th>Buyer</th><th class="right">Qty</th><th class="right">Target price</th><th class="right">Best quote</th><th class="right">Min. order</th><th>Status</th><th></th></tr></thead>
+      <table><thead><tr><th style="width:26px"><input type="checkbox" id="pAll" onclick="pickAllVisible(this.checked)" title="Select all matching"></th><th>Ref</th><th>Product</th><th>Category</th><th>Buyer</th><th class="right">Qty</th><th class="right">Target price</th><th class="right">Best quote</th><th class="right">Min. order</th><th>Status</th><th></th></tr></thead>
       <tbody id="pbody"></tbody></table><div id="pempty"></div></div></div>
   </section>
 
@@ -216,16 +223,9 @@
       </div>
       <div id="impResult" class="hint" style="margin-top:8px"></div>
     </div></div>
-    <div class="panel"><div class="ph"><h3>② Build a supplier RFQ list (random selection)</h3></div><div class="pb">
-      <p class="hint" style="margin-top:0">Pick a number of products at random from the database and export a clean quotation sheet to send to suppliers. Your <b>target price stays private</b> — the sheet only has blank columns for the supplier to fill in.</p>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
-        <div class="fld" style="margin:0"><label>How many products</label><input id="rfqN" type="number" min="1" value="50" style="width:140px"></div>
-        <div class="fld" style="margin:0"><label>Category</label><select id="rfqCat"></select></div>
-        <div class="fld" style="margin:0"><label>Buyer (optional)</label><select id="rfqBuyer"></select></div>
-        <button class="btn green" onclick="generateRfq(false)">🎲 Generate &amp; export</button>
-        <button class="btn ghost" onclick="generateRfq(true)">Preview / re-shuffle</button>
-      </div>
-      <div id="rfqResult" class="hint" style="margin-top:12px"></div>
+    <div class="panel"><div class="ph"><h3>② Build a supplier RFQ list</h3></div><div class="pb">
+      <p class="hint" style="margin-top:0">Go to the <b>Products</b> tab, tick the products you want (search/filter first, or use <b>Pick random…</b>), then click <b>Build RFQ list</b>. Export a printable sheet <b>with images &amp; descriptions</b> in <b>English or Chinese (中文)</b>, with blank columns for suppliers to fill in. Your target price is never included.</p>
+      <button class="btn" onclick="show('products')">Go to Products →</button>
     </div></div>
     <div class="grid2">
       <div class="panel"><div class="ph"><h3>③ Export buyer quote sheet</h3></div><div class="pb">
@@ -256,6 +256,7 @@ const CATS=[{k:"Medical",cls:"cat-med"},{k:"Hotel Furniture & Supply",cls:"cat-h
 const STATUSES=["New","RFQ","Quoted","Sampling","Approved","Ordered","Hold"];
 const STLABEL={New:"New",RFQ:"RFQ sent",Quoted:"Quoted",Sampling:"Sampling",Approved:"Approved",Ordered:"Ordered",Hold:"On hold"};
 let S={brand:"Interpoint",brandSub:"China → Europe sourcing",products:[],suppliers:[],buyers:[],quotes:[],carriers:[],shipments:[]};
+let rfqPick=new Set(), lastFilteredIds=[];
 
 const uid=p=>(p||'')+Math.random().toString(36).slice(2,9);
 const catCls=k=>(CATS.find(c=>c.k===k)||CATS[4]).cls;
@@ -265,8 +266,8 @@ const money=n=>n==null?"—":"€"+Number(n).toLocaleString(undefined,{minimumFr
 const val=i=>document.getElementById(i).value.trim();
 
 /* ---------- row mapping ---------- */
-const prodFromRow=r=>({id:r.id,ref:r.ref,name:r.name,category:r.category,buyerId:r.buyer_id||'',qty:r.qty,target:r.target,specs:r.specs,status:r.status||'New',notes:r.notes});
-const prodToRow=p=>({id:p.id,ref:p.ref||null,name:p.name,category:p.category,buyer_id:p.buyerId||null,qty:p.qty,target:p.target,specs:p.specs||null,status:p.status,notes:p.notes||null});
+const prodFromRow=r=>({id:r.id,ref:r.ref,name:r.name,category:r.category,buyerId:r.buyer_id||'',qty:r.qty,target:r.target,specs:r.specs,image:r.image||'',status:r.status||'New',notes:r.notes});
+const prodToRow=p=>({id:p.id,ref:p.ref||null,name:p.name,category:p.category,buyer_id:p.buyerId||null,qty:p.qty,target:p.target,specs:p.specs||null,image:p.image||null,status:p.status,notes:p.notes||null});
 const quoteFromRow=r=>({id:r.id,productId:r.product_id,supplierId:r.supplier_id||'',price:r.price,moq:r.moq,lead:r.lead,incoterm:r.incoterm,sample:r.sample,notes:r.notes});
 const quoteToRow=q=>({id:q.id,product_id:q.productId,supplier_id:q.supplierId||null,price:q.price,moq:q.moq,lead:q.lead||null,incoterm:q.incoterm||null,sample:q.sample,notes:q.notes||null});
 const buyerToRow=b=>({id:b.id,name:b.name,country:b.country||null,contact:b.contact||null,notes:b.notes||null});
@@ -394,8 +395,6 @@ function fillFilters(){
   sel('pstat').innerHTML='<option value="">All statuses</option>'+STATUSES.map(s=>`<option value="${s}">${STLABEL[s]}</option>`).join('');
   sel('pbuyer').innerHTML='<option value="">All buyers</option>'+S.buyers.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');
   sel('expBuyer').innerHTML='<option value="">All buyers (full list)</option>'+S.buyers.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');
-  sel('rfqCat').innerHTML='<option value="">All categories</option>'+CATS.map(c=>`<option>${c.k}</option>`).join('');
-  sel('rfqBuyer').innerHTML='<option value="">All buyers</option>'+S.buyers.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');
 }
 function renderProducts(){
   const q=(document.getElementById('psearch').value||'').toLowerCase();
@@ -403,18 +402,22 @@ function renderProducts(){
   let rows=S.products.filter(p=>{
     if(fc&&p.category!==fc)return false;if(fs&&p.status!==fs)return false;if(fb&&p.buyerId!==fb)return false;
     if(q&&!((p.name+' '+(p.ref||'')+' '+(p.specs||'')).toLowerCase().includes(q)))return false;return true;});
+  lastFilteredIds=rows.map(p=>p.id);
   const CAP=300,shown=rows.slice(0,CAP);
   document.getElementById('pbody').innerHTML=shown.map(p=>{
     const b=bestQuote(p.id);const qs=S.quotes.filter(q=>q.productId===p.id);
-    return `<tr><td class="nowrap muted">${esc(p.ref||'')}</td>
-      <td><b>${esc(p.name)}</b>${p.specs?`<div class="muted" style="font-size:12px;max-width:280px">${esc(p.specs)}</div>`:''}${qs.length?`<details><summary>${qs.length} quote${qs.length>1?'s':''}</summary>${quotesTable(p.id)}</details>`:''}</td>
+    return `<tr><td><input type="checkbox" ${rfqPick.has(p.id)?'checked':''} onclick="togglePick('${p.id}')"></td>
+      <td class="nowrap muted">${esc(p.ref||'')}</td>
+      <td>${p.image?`<img src="${esc(p.image)}" loading="lazy" style="width:34px;height:34px;object-fit:cover;border-radius:5px;border:1px solid var(--line);float:left;margin-right:8px">`:''}<b>${esc(p.name)}</b>${p.specs?`<div class="muted" style="font-size:12px;max-width:280px">${esc(p.specs)}</div>`:''}${qs.length?`<details><summary>${qs.length} quote${qs.length>1?'s':''}</summary>${quotesTable(p.id)}</details>`:''}</td>
       <td><span class="tag ${catCls(p.category)}">${esc(p.category)}</span></td><td>${esc(buyerName(p.buyerId))}</td>
       <td class="right">${p.qty?Number(p.qty).toLocaleString():'—'}</td><td class="right muted">${p.target!=null?money(p.target):'—'}</td>
       <td class="right ${b?'best':''}">${b?money(b.price):'—'}${b?`<div class="muted" style="font-size:11px;font-weight:400">${esc(supName(b.supplierId))}</div>`:''}</td>
       <td class="right">${b&&b.moq!=null?Number(b.moq).toLocaleString():'—'}</td>
       <td><span class="st st-${p.status}">${STLABEL[p.status]}</span></td>
       <td class="nowrap right"><button class="btn sm ghost" onclick="openProduct('${p.id}')">Edit</button> <button class="btn sm green" onclick="openQuote('${p.id}')">+ Quote</button></td></tr>`;}).join('');
-  document.getElementById('pempty').innerHTML=!rows.length?`<div class="empty">No products match.</div>`:(rows.length>CAP?`<div class="empty">Showing first ${CAP} of <b>${rows.length}</b> matches — refine the search or filters to narrow down.</div>`:'');
+  document.getElementById('pempty').innerHTML=!rows.length?`<div class="empty">No products match.</div>`:(rows.length>CAP?`<div class="empty">Showing first ${CAP} of <b>${rows.length}</b> matches — refine search/filters to narrow. (Tick boxes select per row; "select all" covers all ${rows.length} matched.)</div>`:'');
+  const pAll=document.getElementById('pAll');if(pAll)pAll.checked=lastFilteredIds.length>0&&lastFilteredIds.every(id=>rfqPick.has(id));
+  updatePickbar();
 }
 function quotesTable(pid){
   const b=bestQuote(pid);const qs=S.quotes.filter(q=>q.productId===pid).sort((a,b)=>(a.price??1e9)-(b.price??1e9));
@@ -428,7 +431,7 @@ document.getElementById('overlay').addEventListener('click',e=>{if(e.target.id==
 
 /* ---------- product CRUD ---------- */
 function openProduct(id){
-  const p=id?S.products.find(x=>x.id===id):{id:null,name:'',ref:'',category:'Medical',buyerId:'',qty:'',target:'',specs:'',status:'New',notes:''};
+  const p=id?S.products.find(x=>x.id===id):{id:null,name:'',ref:'',category:'Medical',buyerId:'',qty:'',target:'',specs:'',image:'',status:'New',notes:''};
   const body=`<div class="fld"><label>Product name *</label><input id="f_name" value="${esc(p.name)}"></div>
     <div class="grid3"><div class="fld"><label>Reference</label><input id="f_ref" value="${esc(p.ref||'')}"></div>
     <div class="fld"><label>Category</label><select id="f_cat">${CATS.map(c=>`<option ${c.k===p.category?'selected':''}>${c.k}</option>`).join('')}</select></div>
@@ -436,14 +439,15 @@ function openProduct(id){
     <div class="grid3"><div class="fld"><label>Buyer</label><select id="f_buyer"><option value="">— none —</option>${S.buyers.map(b=>`<option value="${b.id}" ${b.id===p.buyerId?'selected':''}>${esc(b.name)}</option>`).join('')}</select></div>
     <div class="fld"><label>Quantity</label><input id="f_qty" value="${esc(p.qty)}"></div>
     <div class="fld"><label>Target price (€)</label><input id="f_target" value="${esc(p.target)}"></div></div>
-    <div class="fld"><label>Specs / requirements</label><textarea id="f_specs" rows="2">${esc(p.specs||'')}</textarea></div>
+    <div class="fld"><label>Specs / requirements (description)</label><textarea id="f_specs" rows="2">${esc(p.specs||'')}</textarea></div>
+    <div class="fld"><label>Image URL</label><input id="f_image" value="${esc(p.image||'')}" placeholder="https://…"></div>
     <div class="fld"><label>Notes</label><textarea id="f_notes" rows="2">${esc(p.notes||'')}</textarea></div>`;
   const foot=`${id?`<button class="btn danger" style="margin-right:auto" onclick="delProduct('${id}')">Delete</button>`:''}<button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveProduct('${id||''}')">${id?'Save':'Add product'}</button>`;
   openModal(id?'Edit product':'Add product',body,foot);setTimeout(()=>document.getElementById('f_name').focus(),50);
 }
 async function saveProduct(id){
   const name=val('f_name');if(!name){alert('Product name is required');return}
-  const p={id:id||uid('p'),name,ref:val('f_ref'),category:val('f_cat'),status:val('f_status'),buyerId:val('f_buyer'),qty:num(val('f_qty')),target:num(val('f_target')),specs:val('f_specs'),notes:val('f_notes')};
+  const p={id:id||uid('p'),name,ref:val('f_ref'),category:val('f_cat'),status:val('f_status'),buyerId:val('f_buyer'),qty:num(val('f_qty')),target:num(val('f_target')),specs:val('f_specs'),image:val('f_image'),notes:val('f_notes')};
   const {error}=await db.from('products').upsert(prodToRow(p));
   if(error){alert('Save failed: '+error.message);return}
   upsertLocal('products',p);closeModal();renderAll();
@@ -645,33 +649,61 @@ function exportQuoteSheet(){
 }
 function backup(){download('interpoint-backup-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(S,null,2),'application/json')}
 
-/* ---------- RFQ list (random selection) ---------- */
+/* ---------- RFQ builder: you pick products; export with images + description, EN/中文 ---------- */
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
-let rfqSel=[];
-function generateRfq(previewOnly){
-  const n=parseInt(document.getElementById('rfqN').value)||0;
-  const cat=document.getElementById('rfqCat').value, bid=document.getElementById('rfqBuyer').value;
-  const res=document.getElementById('rfqResult');
-  if(n<1){res.innerHTML='<span style="color:var(--danger)">Enter how many products you want.</span>';return}
-  const pool=S.products.filter(p=>(!cat||p.category===cat)&&(!bid||p.buyerId===bid));
-  if(!pool.length){res.innerHTML='<span style="color:var(--danger)">No products match that filter.</span>';return}
-  const take=Math.min(n,pool.length);
-  rfqSel=shuffle(pool.slice()).slice(0,take);
-  const preview=rfqSel.slice(0,8).map(p=>'• '+esc((p.ref?p.ref+' — ':'')+p.name)).join('<br>')+(take>8?`<br>…and ${take-8} more`:'');
-  const note=take<n?` <span class="muted">(only ${pool.length} available in that filter)</span>`:'';
-  if(previewOnly){
-    res.innerHTML=`<b>${take}</b> products randomly selected${note}:<br>${preview}<br><button class="btn sm green" style="margin-top:10px" onclick="exportRfq()">⬇ Export this list</button>`;
-  }else{
-    exportRfq();
-    res.innerHTML=`<b style="color:var(--ok)">✓ Exported RFQ sheet with ${take} products</b>${note}:<br>${preview}`;
-  }
+function updatePickbar(){const el=document.getElementById('pickCount');if(el)el.textContent=rfqPick.size+' selected';}
+function togglePick(id){rfqPick.has(id)?rfqPick.delete(id):rfqPick.add(id);updatePickbar();}
+function clearPicks(){rfqPick.clear();renderProducts();}
+function pickAllVisible(on){lastFilteredIds.forEach(id=>on?rfqPick.add(id):rfqPick.delete(id));renderProducts();}
+function pickRandomPrompt(){
+  const v=prompt('How many random products to add to the list?','50');if(v===null)return;
+  const n=parseInt(v);if(!n||n<1)return;
+  const pool=shuffle(S.products.slice());
+  pool.slice(0,Math.min(n,pool.length)).forEach(p=>rfqPick.add(p.id));
+  renderProducts();show('products');
 }
-function exportRfq(){
-  if(!rfqSel.length){return}
-  const head=['No.','Ref','Product','Specs','Required Qty','Unit Price (EUR)','MOQ','Lead Time','Incoterm','Sample Cost (EUR)','Remarks'];
-  const lines=[head.join(',')];
-  rfqSel.forEach((p,i)=>lines.push([i+1,p.ref,p.name,p.specs,p.qty,'','','','','',''].map(csvCell).join(',')));
-  download('rfq-list-'+new Date().toISOString().slice(0,10)+'.csv','﻿'+lines.join('\r\n'),'text/csv');
+function rfqSelected(){return S.products.filter(p=>rfqPick.has(p.id));}
+const RFQ_L={
+  en:{title:'Request for Quotation',sub:'Please fill in the blank columns and return this sheet.',no:'No.',img:'Image',ref:'Ref',name:'Product',desc:'Description',qty:'Required Qty',price:'Unit Price (EUR)',moq:'MOQ',lead:'Lead Time',incoterm:'Incoterm',sample:'Sample Cost (EUR)',remark:'Remarks',supplier:'Supplier',date:'Date',from:'From'},
+  zh:{title:'询价单',sub:'请填写空白栏并回传此表。',no:'序号',img:'图片',ref:'编号',name:'产品',desc:'描述',qty:'需求数量',price:'单价(欧元)',moq:'最小起订量',lead:'交货期',incoterm:'贸易术语',sample:'样品费(欧元)',remark:'备注',supplier:'供应商',date:'日期',from:'来自'}
+};
+function openRfqBuilder(){
+  const items=rfqSelected();
+  if(!items.length){alert('No products selected. Tick the checkboxes in the Products list first (or use "Pick random…").');return}
+  const body=`<p class="hint" style="margin-top:0"><b>${items.length}</b> products selected for this quotation list.</p>
+    <div class="grid2"><div class="fld"><label>Language</label><select id="rfqLang"><option value="en">English</option><option value="zh">中文 (Chinese)</option></select></div>
+    <div class="fld"><label>Format</label><select id="rfqFmt"><option value="html">Printable sheet with images (HTML)</option><option value="csv">Spreadsheet (CSV)</option></select></div></div>
+    <div class="hint">The printable sheet shows each product's image &amp; description with blank quote columns. Open it and print to PDF, or send the file. Target price is never included.</div>
+    <div style="max-height:220px;overflow:auto;margin-top:12px;border:1px solid var(--line);border-radius:8px"><table><tbody>${items.slice(0,200).map(p=>`<tr><td style="width:42px">${p.image?`<img src="${esc(p.image)}" loading="lazy" style="width:32px;height:32px;object-fit:cover;border-radius:4px">`:''}</td><td class="muted" style="font-size:12px;white-space:nowrap">${esc(p.ref||'')}</td><td style="font-size:12.5px">${esc(p.name)}</td><td class="right"><button class="btn sm danger" onclick="rfqPick.delete('${p.id}');openRfqBuilder();renderProducts()">✕</button></td></tr>`).join('')}</tbody></table>${items.length>200?`<div class="hint" style="padding:8px">…and ${items.length-200} more</div>`:''}</div>`;
+  const foot=`<button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn green" onclick="exportRfqDoc()">⬇ Generate &amp; download</button>`;
+  openModal('Build RFQ list',body,foot);
+}
+function exportRfqDoc(){
+  const items=rfqSelected();if(!items.length)return;
+  const lang=document.getElementById('rfqLang').value, fmt=document.getElementById('rfqFmt').value, L=RFQ_L[lang];
+  if(fmt==='csv'){
+    const head=[L.no,L.ref,L.name,L.desc,'Image URL',L.qty,L.price,L.moq,L.lead,L.incoterm,L.sample,L.remark];
+    const lines=[head.join(',')];
+    items.forEach((p,i)=>lines.push([i+1,p.ref,p.name,p.specs,p.image,p.qty,'','','','','',''].map(csvCell).join(',')));
+    download('RFQ-'+(lang==='zh'?'CN-':'')+new Date().toISOString().slice(0,10)+'.csv','﻿'+lines.join('\r\n'),'text/csv');
+  }else{
+    const rowsHtml=items.map((p,i)=>`<tr><td>${i+1}</td><td class="img">${p.image?`<img src="${esc(p.image)}">`:''}</td><td>${esc(p.ref||'')}</td><td class="nm">${esc(p.name)}</td><td class="ds">${esc(p.specs||'')}</td><td>${p.qty!=null?p.qty:''}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join('');
+    const doc=`<!DOCTYPE html><html lang="${lang}"><head><meta charset="UTF-8"><title>${esc(L.title)} - ${esc(S.brand)}</title>
+<style>body{font-family:Arial,"Microsoft YaHei","PingFang SC",sans-serif;margin:24px;color:#1a2433}
+h1{font-size:20px;margin:0 0 4px}.meta{color:#555;font-size:13px;margin-bottom:6px}.note{font-size:12px;color:#555;margin:6px 0 14px}
+table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid #bbb;padding:5px 6px;vertical-align:top}
+th{background:#0f2740;color:#fff;font-weight:600}td.img img{width:70px;height:70px;object-fit:cover}td.nm{min-width:160px}td.ds{min-width:180px;color:#444}
+tr:nth-child(even) td{background:#f7f9fc}.btn{background:#1f6feb;color:#fff;border:0;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px}
+@media print{.noprint{display:none}}</style></head>
+<body><button class="btn noprint" onclick="window.print()" style="float:right">🖨 Print / Save PDF</button>
+<h1>${esc(L.title)}</h1>
+<div class="meta">${L.from}: ${esc(S.brand)} &nbsp;|&nbsp; ${L.date}: ${new Date().toISOString().slice(0,10)} &nbsp;|&nbsp; ${L.supplier}: ____________________</div>
+<div class="note">${esc(L.sub)}</div>
+<table><thead><tr><th>${L.no}</th><th>${L.img}</th><th>${L.ref}</th><th>${L.name}</th><th>${L.desc}</th><th>${L.qty}</th><th>${L.price}</th><th>${L.moq}</th><th>${L.lead}</th><th>${L.incoterm}</th><th>${L.sample}</th><th>${L.remark}</th></tr></thead>
+<tbody>${rowsHtml}</tbody></table></body></html>`;
+    download('RFQ-'+(lang==='zh'?'CN-':'')+new Date().toISOString().slice(0,10)+'.html',doc,'text/html');
+  }
+  closeModal();
 }
 
 /* ---------- brand ---------- */
