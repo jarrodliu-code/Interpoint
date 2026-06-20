@@ -266,8 +266,8 @@ const money=n=>n==null?"—":"€"+Number(n).toLocaleString(undefined,{minimumFr
 const val=i=>document.getElementById(i).value.trim();
 
 /* ---------- row mapping ---------- */
-const prodFromRow=r=>({id:r.id,ref:r.ref,name:r.name,category:r.category,buyerId:r.buyer_id||'',qty:r.qty,target:r.target,specs:r.specs,image:r.image||'',status:r.status||'New',notes:r.notes});
-const prodToRow=p=>({id:p.id,ref:p.ref||null,name:p.name,category:p.category,buyer_id:p.buyerId||null,qty:p.qty,target:p.target,specs:p.specs||null,image:p.image||null,status:p.status,notes:p.notes||null});
+const prodFromRow=r=>({id:r.id,ref:r.ref,name:r.name,category:r.category,buyerId:r.buyer_id||'',qty:r.qty,target:r.target,specs:r.specs,image:r.image||'',url:r.url||'',status:r.status||'New',notes:r.notes});
+const prodToRow=p=>({id:p.id,ref:p.ref||null,name:p.name,category:p.category,buyer_id:p.buyerId||null,qty:p.qty,target:p.target,specs:p.specs||null,image:p.image||null,url:p.url||null,status:p.status,notes:p.notes||null});
 const quoteFromRow=r=>({id:r.id,productId:r.product_id,supplierId:r.supplier_id||'',price:r.price,moq:r.moq,lead:r.lead,incoterm:r.incoterm,sample:r.sample,notes:r.notes});
 const quoteToRow=q=>({id:q.id,product_id:q.productId,supplier_id:q.supplierId||null,price:q.price,moq:q.moq,lead:q.lead||null,incoterm:q.incoterm||null,sample:q.sample,notes:q.notes||null});
 const buyerToRow=b=>({id:b.id,name:b.name,country:b.country||null,contact:b.contact||null,notes:b.notes||null});
@@ -431,7 +431,7 @@ document.getElementById('overlay').addEventListener('click',e=>{if(e.target.id==
 
 /* ---------- product CRUD ---------- */
 function openProduct(id){
-  const p=id?S.products.find(x=>x.id===id):{id:null,name:'',ref:'',category:'Medical',buyerId:'',qty:'',target:'',specs:'',image:'',status:'New',notes:''};
+  const p=id?S.products.find(x=>x.id===id):{id:null,name:'',ref:'',category:'Medical',buyerId:'',qty:'',target:'',specs:'',image:'',url:'',status:'New',notes:''};
   const body=`<div class="fld"><label>Product name *</label><input id="f_name" value="${esc(p.name)}"></div>
     <div class="grid3"><div class="fld"><label>Reference</label><input id="f_ref" value="${esc(p.ref||'')}"></div>
     <div class="fld"><label>Category</label><select id="f_cat">${CATS.map(c=>`<option ${c.k===p.category?'selected':''}>${c.k}</option>`).join('')}</select></div>
@@ -440,14 +440,15 @@ function openProduct(id){
     <div class="fld"><label>Quantity</label><input id="f_qty" value="${esc(p.qty)}"></div>
     <div class="fld"><label>Target price (€)</label><input id="f_target" value="${esc(p.target)}"></div></div>
     <div class="fld"><label>Specs / requirements (description)</label><textarea id="f_specs" rows="2">${esc(p.specs||'')}</textarea></div>
-    <div class="fld"><label>Image URL</label><input id="f_image" value="${esc(p.image||'')}" placeholder="https://…"></div>
+    <div class="grid2"><div class="fld"><label>Image URL</label><input id="f_image" value="${esc(p.image||'')}" placeholder="https://…"></div>
+    <div class="fld"><label>Product page URL</label><input id="f_url" value="${esc(p.url||'')}" placeholder="https://…"></div></div>
     <div class="fld"><label>Notes</label><textarea id="f_notes" rows="2">${esc(p.notes||'')}</textarea></div>`;
   const foot=`${id?`<button class="btn danger" style="margin-right:auto" onclick="delProduct('${id}')">Delete</button>`:''}<button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveProduct('${id||''}')">${id?'Save':'Add product'}</button>`;
   openModal(id?'Edit product':'Add product',body,foot);setTimeout(()=>document.getElementById('f_name').focus(),50);
 }
 async function saveProduct(id){
   const name=val('f_name');if(!name){alert('Product name is required');return}
-  const p={id:id||uid('p'),name,ref:val('f_ref'),category:val('f_cat'),status:val('f_status'),buyerId:val('f_buyer'),qty:num(val('f_qty')),target:num(val('f_target')),specs:val('f_specs'),image:val('f_image'),notes:val('f_notes')};
+  const p={id:id||uid('p'),name,ref:val('f_ref'),category:val('f_cat'),status:val('f_status'),buyerId:val('f_buyer'),qty:num(val('f_qty')),target:num(val('f_target')),specs:val('f_specs'),image:val('f_image'),url:val('f_url'),notes:val('f_notes')};
   const {error}=await db.from('products').upsert(prodToRow(p));
   if(error){alert('Save failed: '+error.message);return}
   upsertLocal('products',p);closeModal();renderAll();
@@ -664,8 +665,8 @@ function pickRandomPrompt(){
 }
 function rfqSelected(){return S.products.filter(p=>rfqPick.has(p.id));}
 const RFQ_L={
-  en:{title:'Request for Quotation',sub:'Please fill in the blank columns and return this sheet.',no:'No.',img:'Image',ref:'Ref',name:'Product',desc:'Description',qty:'Required Qty',price:'Unit Price (EUR)',moq:'MOQ',lead:'Lead Time',incoterm:'Incoterm',sample:'Sample Cost (EUR)',remark:'Remarks',supplier:'Supplier',date:'Date',from:'From'},
-  zh:{title:'询价单',sub:'请填写空白栏并回传此表。',no:'序号',img:'图片',ref:'编号',name:'产品',desc:'描述',qty:'需求数量',price:'单价(欧元)',moq:'最小起订量',lead:'交货期',incoterm:'贸易术语',sample:'样品费(欧元)',remark:'备注',supplier:'供应商',date:'日期',from:'来自'}
+  en:{title:'Request for Quotation',sub:'Please fill in the blank columns and return this sheet.',no:'No.',img:'Image',ref:'Ref',name:'Product',desc:'Description',url:'Product URL',imgurl:'Image URL',link:'Link',view:'Open',qty:'Required Qty',price:'Unit Price (EUR)',moq:'MOQ',lead:'Lead Time',incoterm:'Incoterm',sample:'Sample Cost (EUR)',remark:'Remarks',supplier:'Supplier',date:'Date',from:'From'},
+  zh:{title:'询价单',sub:'请填写空白栏并回传此表。',no:'序号',img:'图片',ref:'编号',name:'产品',desc:'描述',url:'产品链接',imgurl:'图片链接',link:'链接',view:'查看',qty:'需求数量',price:'单价(欧元)',moq:'最小起订量',lead:'交货期',incoterm:'贸易术语',sample:'样品费(欧元)',remark:'备注',supplier:'供应商',date:'日期',from:'来自'}
 };
 function openRfqBuilder(){
   const items=rfqSelected();
@@ -682,24 +683,24 @@ function exportRfqDoc(){
   const items=rfqSelected();if(!items.length)return;
   const lang=document.getElementById('rfqLang').value, fmt=document.getElementById('rfqFmt').value, L=RFQ_L[lang];
   if(fmt==='csv'){
-    const head=[L.no,L.ref,L.name,L.desc,'Image URL',L.qty,L.price,L.moq,L.lead,L.incoterm,L.sample,L.remark];
+    const head=[L.no,L.ref,L.name,L.desc,L.url,L.imgurl,L.qty,L.price,L.moq,L.lead,L.incoterm,L.sample,L.remark];
     const lines=[head.join(',')];
-    items.forEach((p,i)=>lines.push([i+1,p.ref,p.name,p.specs,p.image,p.qty,'','','','','',''].map(csvCell).join(',')));
+    items.forEach((p,i)=>lines.push([i+1,p.ref,p.name,p.specs,p.url,p.image,p.qty,'','','','','',''].map(csvCell).join(',')));
     download('RFQ-'+(lang==='zh'?'CN-':'')+new Date().toISOString().slice(0,10)+'.csv','﻿'+lines.join('\r\n'),'text/csv');
   }else{
-    const rowsHtml=items.map((p,i)=>`<tr><td>${i+1}</td><td class="img">${p.image?`<img src="${esc(p.image)}">`:''}</td><td>${esc(p.ref||'')}</td><td class="nm">${esc(p.name)}</td><td class="ds">${esc(p.specs||'')}</td><td>${p.qty!=null?p.qty:''}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join('');
+    const rowsHtml=items.map((p,i)=>`<tr><td>${i+1}</td><td class="img">${p.image?`<img src="${esc(p.image)}"><div class="u">${esc(p.image)}</div>`:''}</td><td>${esc(p.ref||'')}</td><td class="nm">${esc(p.name)}</td><td class="ds">${esc(p.specs||'')}</td><td>${p.url?`<a href="${esc(p.url)}">${L.view}</a>`:''}</td><td>${p.qty!=null?p.qty:''}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join('');
     const doc=`<!DOCTYPE html><html lang="${lang}"><head><meta charset="UTF-8"><title>${esc(L.title)} - ${esc(S.brand)}</title>
 <style>body{font-family:Arial,"Microsoft YaHei","PingFang SC",sans-serif;margin:24px;color:#1a2433}
 h1{font-size:20px;margin:0 0 4px}.meta{color:#555;font-size:13px;margin-bottom:6px}.note{font-size:12px;color:#555;margin:6px 0 14px}
 table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid #bbb;padding:5px 6px;vertical-align:top}
-th{background:#0f2740;color:#fff;font-weight:600}td.img img{width:70px;height:70px;object-fit:cover}td.nm{min-width:160px}td.ds{min-width:180px;color:#444}
+th{background:#0f2740;color:#fff;font-weight:600}td.img img{width:70px;height:70px;object-fit:cover}td.img .u{font-size:8px;color:#888;max-width:80px;word-break:break-all}td.nm{min-width:150px}td.ds{min-width:160px;color:#444}
 tr:nth-child(even) td{background:#f7f9fc}.btn{background:#1f6feb;color:#fff;border:0;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px}
 @media print{.noprint{display:none}}</style></head>
 <body><button class="btn noprint" onclick="window.print()" style="float:right">🖨 Print / Save PDF</button>
 <h1>${esc(L.title)}</h1>
 <div class="meta">${L.from}: ${esc(S.brand)} &nbsp;|&nbsp; ${L.date}: ${new Date().toISOString().slice(0,10)} &nbsp;|&nbsp; ${L.supplier}: ____________________</div>
 <div class="note">${esc(L.sub)}</div>
-<table><thead><tr><th>${L.no}</th><th>${L.img}</th><th>${L.ref}</th><th>${L.name}</th><th>${L.desc}</th><th>${L.qty}</th><th>${L.price}</th><th>${L.moq}</th><th>${L.lead}</th><th>${L.incoterm}</th><th>${L.sample}</th><th>${L.remark}</th></tr></thead>
+<table><thead><tr><th>${L.no}</th><th>${L.img}</th><th>${L.ref}</th><th>${L.name}</th><th>${L.desc}</th><th>${L.link}</th><th>${L.qty}</th><th>${L.price}</th><th>${L.moq}</th><th>${L.lead}</th><th>${L.incoterm}</th><th>${L.sample}</th><th>${L.remark}</th></tr></thead>
 <tbody>${rowsHtml}</tbody></table></body></html>`;
     download('RFQ-'+(lang==='zh'?'CN-':'')+new Date().toISOString().slice(0,10)+'.html',doc,'text/html');
   }
