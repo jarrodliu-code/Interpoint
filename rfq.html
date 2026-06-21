@@ -48,7 +48,7 @@ const NAMEVAL={zh:p=>p.name_zh||'',en:p=>p.name_en||'',hr:p=>p.name};
 const hl=[...new Set(ord.map(l=>l==='zh'?'zh':'en'))];
 const H=k=>hl.map(x=>L[x][k]).join(' / ');
 let I18N={cat:{},sub:{}};
-function descByLang(p,lang){const s=p.specs||'';if(!s)return '';if(lang!=='zh')return s;return s.split(' · ').map(t=>{t=t.trim();if(t.startsWith('Brand:')||t.startsWith('HR:'))return t;return (I18N.cat&&I18N.cat[t])||(I18N.sub&&I18N.sub[t])||t;}).join(' · ');}
+function descByLang(p,lang){const s=p.specs||'';if(!s)return '';if(lang==='en')return s;return s.split(' · ').map(t=>{t=t.trim();if(t.startsWith('Brand:')||t.startsWith('HR:'))return t;const m=(I18N.cat&&I18N.cat[t])||(I18N.sub&&I18N.sub[t]);return (m&&m[lang])||t;}).join(' · ');}
 function descLines(p){const seen={},out=[];ord.forEach(l=>{const d=descByLang(p,l);if(d&&!seen[d]){seen[d]=1;out.push(d);}});return out;}
 const ids=(params.get('ids')||'').split(',').map(s=>s.trim()).filter(Boolean);
 document.documentElement.lang=labelLang;

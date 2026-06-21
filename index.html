@@ -719,8 +719,8 @@ const RFQ_NAMEVAL={zh:p=>p.nameZh||'',en:p=>p.nameEn||'',hr:p=>p.name};
 const RFQ_LANGCOL={zh:'产品 (中文)',en:'Product (EN)',hr:'Product (original)'};
 function descByLang(p,lang){
   const s=p.specs||'';if(!s)return '';
-  if(lang!=='zh')return s;
-  return s.split(' · ').map(t=>{t=t.trim();if(t.startsWith('Brand:')||t.startsWith('HR:'))return t;return (I18N.cat&&I18N.cat[t])||(I18N.sub&&I18N.sub[t])||t;}).join(' · ');
+  if(lang==='en')return s;
+  return s.split(' · ').map(t=>{t=t.trim();if(t.startsWith('Brand:')||t.startsWith('HR:'))return t;const m=(I18N.cat&&I18N.cat[t])||(I18N.sub&&I18N.sub[t]);return (m&&m[lang])||t;}).join(' · ');
 }
 function descLines(p,ord){const seen={},out=[];ord.forEach(l=>{const d=descByLang(p,l);if(d&&!seen[d]){seen[d]=1;out.push(d);}});return out;}
 function exportRfqDoc(){
