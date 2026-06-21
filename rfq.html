@@ -38,9 +38,15 @@ const L={
 };
 const esc=s=>(s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const params=new URLSearchParams(location.search);
-const lang=params.get('lang')==='zh'?'zh':'en';
+let langs;
+if(params.get('langs'))langs=params.get('langs').split(',').map(s=>s.trim()).filter(Boolean);
+else if(params.get('lang'))langs=[params.get('lang')];
+else langs=['zh','en','hr'];
+const ord=['zh','en','hr'].filter(l=>langs.includes(l));
+const labelLang=langs.includes('zh')?'zh':'en';
+const NAMEVAL={zh:p=>p.name_zh||'',en:p=>p.name_en||'',hr:p=>p.name};
 const ids=(params.get('ids')||'').split(',').map(s=>s.trim()).filter(Boolean);
-document.documentElement.lang=lang;
+document.documentElement.lang=labelLang;
 
 async function api(pathAndQuery){
   const r=await fetch(SUPABASE_URL+'/rest/v1/'+pathAndQuery,{headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY}});
@@ -48,7 +54,7 @@ async function api(pathAndQuery){
   return r.json();
 }
 async function load(){
-  const Lx=L[lang];
+  const Lx=L[labelLang];
   if(!ids.length){document.getElementById('app').innerHTML='<div class="loading">This quotation list is empty.</div>';return;}
   let brand='Interpoint';
   try{
@@ -66,14 +72,14 @@ function render(items,brand,Lx){
     <td>${i+1}</td>
     <td class="img">${p.image?`<a href="${esc(p.image)}" target="_blank" rel="noopener"><img src="${esc(p.image)}" loading="lazy"></a>`:''}</td>
     <td>${esc(p.ref||'')}</td>
-    <td class="nm">${esc(lang==='zh'?(p.name_zh||p.name):(p.name_en||p.name))}</td>
+    <td class="nm">${(()=>{let ls=ord.map(l=>NAMEVAL[l](p)).filter(Boolean);if(!ls.length)ls=[p.name];return ls.map((t,k)=>k===0?esc(t):`<div class="tr">${esc(t)}</div>`).join('');})()}</td>
     <td class="ds">${esc(p.specs||'')}</td>
     <td>${p.url?`<a href="${esc(p.url)}" target="_blank" rel="noopener">${Lx.view}</a>`:''}</td>
     <td>${p.qty!=null?p.qty:''}</td>
     <td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join('');
   document.getElementById('app').innerHTML=`
     <h1>${esc(Lx.title)}</h1>
-    <div class="meta">${Lx.from}: ${esc(brand)} &nbsp;|&nbsp; ${Lx.date}: ${new Date().toISOString().slice(0,10)} &nbsp;|&nbsp; ${items.length} ${lang==='zh'?'项':'items'}</div>
+    <div class="meta">${Lx.from}: ${esc(brand)} &nbsp;|&nbsp; ${Lx.date}: ${new Date().toISOString().slice(0,10)} &nbsp;|&nbsp; ${items.length} ${labelLang==='zh'?'项':'items'}</div>
     <div class="note">${esc(Lx.sub)}</div>
     <div class="bar"><button class="btn" onclick="window.print()">${Lx.print}</button></div>
     <table><thead><tr>

@@ -682,8 +682,8 @@ function rfqSelected(){return S.products.filter(p=>rfqPick.has(p.id));}
 const RFQ_SHARE_BASE='https://jarrodliu-code.github.io/Interpoint/rfq.html';
 function copyRfqLink(){
   const items=rfqSelected();if(!items.length){alert('Select products first.');return;}
-  const lang=document.getElementById('rfqLang').value;
-  const url=RFQ_SHARE_BASE+'?lang='+lang+'&ids='+items.map(p=>p.id).join(',');
+  const langs=rfqLangs();if(!langs.length){alert('Tick at least one language.');return;}
+  const url=RFQ_SHARE_BASE+'?langs='+langs.join(',')+'&ids='+items.map(p=>p.id).join(',');
   const out=document.getElementById('rfqLinkOut');
   const show=ok=>{out.innerHTML=(ok?'<b style="color:var(--ok)">✓ Link copied — paste into WeChat.</b>':'<b>Copy this link:</b>')+`<div style="word-break:break-all;font-size:11px;margin-top:4px;background:#fff;border:1px solid var(--line);border-radius:6px;padding:6px"><a href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a></div>`;};
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(()=>show(true)).catch(()=>show(false));}
@@ -697,7 +697,10 @@ function openRfqBuilder(){
   const items=rfqSelected();
   if(!items.length){alert('No products selected. Tick the checkboxes in the Products list first (or use "Pick random…").');return}
   const body=`<p class="hint" style="margin-top:0"><b>${items.length}</b> products selected for this quotation list.</p>
-    <div class="grid2"><div class="fld"><label>Output language (product names)</label><select id="rfqLang"><option value="en">English</option><option value="zh">中文 (Chinese)</option></select></div>
+    <div class="grid2"><div class="fld"><label>Output languages (tick any)</label><div style="display:flex;gap:14px;flex-wrap:wrap;padding-top:6px;font-size:13px">
+      <label><input type="checkbox" class="rfqLang" value="hr" checked> Croatian</label>
+      <label><input type="checkbox" class="rfqLang" value="en" checked> English</label>
+      <label><input type="checkbox" class="rfqLang" value="zh" checked> 中文</label></div></div>
     <div class="fld"><label>Format</label><select id="rfqFmt"><option value="html">Printable sheet with images (HTML)</option><option value="csv">Spreadsheet (CSV)</option></select></div></div>
     <div style="background:#eef5ff;border:1px solid #cfe0f5;border-radius:8px;padding:10px;margin:10px 0">
       <b>📲 Share to WeChat / online (recommended):</b>
@@ -710,17 +713,24 @@ function openRfqBuilder(){
   const foot=`<button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn green" onclick="exportRfqDoc()">⬇ Generate &amp; download</button>`;
   openModal('Build RFQ list',body,foot);
 }
+function rfqLangs(){return [...document.querySelectorAll('.rfqLang:checked')].map(c=>c.value);}
+const RFQ_NAMEVAL={zh:p=>p.nameZh||'',en:p=>p.nameEn||'',hr:p=>p.name};
+const RFQ_LANGCOL={zh:'产品 (中文)',en:'Product (EN)',hr:'Product (original)'};
 function exportRfqDoc(){
   const items=rfqSelected();if(!items.length)return;
-  const lang=document.getElementById('rfqLang').value, fmt=document.getElementById('rfqFmt').value, L=RFQ_L[lang];
+  const langs=rfqLangs();if(!langs.length){alert('Tick at least one output language.');return;}
+  const fmt=document.getElementById('rfqFmt').value;
+  const ord=['zh','en','hr'].filter(l=>langs.includes(l));
+  const L=RFQ_L[langs.includes('zh')?'zh':'en'];
   if(fmt==='csv'){
-    const head=[L.no,L.ref,L.name,L.desc,L.url,L.imgurl,L.qty,L.price,L.moq,L.lead,L.incoterm,L.sample,L.remark];
+    const head=[L.no,L.ref,...ord.map(l=>RFQ_LANGCOL[l]),L.desc,L.url,L.imgurl,L.qty,L.price,L.moq,L.lead,L.incoterm,L.sample,L.remark];
     const lines=[head.join(',')];
-    items.forEach((p,i)=>lines.push([i+1,p.ref,(lang==='zh'?(p.nameZh||p.name):(p.nameEn||p.name)),p.specs,p.url,p.image,p.qty,'','','','','',''].map(csvCell).join(',')));
-    download('RFQ-'+(lang==='zh'?'CN-':'')+new Date().toISOString().slice(0,10)+'.csv','﻿'+lines.join('\r\n'),'text/csv');
+    items.forEach((p,i)=>lines.push([i+1,p.ref,...ord.map(l=>RFQ_NAMEVAL[l](p)),p.specs,p.url,p.image,p.qty,'','','','','',''].map(csvCell).join(',')));
+    download('RFQ-'+new Date().toISOString().slice(0,10)+'.csv','﻿'+lines.join('\r\n'),'text/csv');
   }else{
-    const rowsHtml=items.map((p,i)=>`<tr><td>${i+1}</td><td class="img">${p.image?`<a href="${esc(p.image)}" target="_blank" rel="noopener"><img src="${esc(p.image)}"></a>`:''}</td><td>${esc(p.ref||'')}</td><td class="nm">${esc(lang==='zh'?(p.nameZh||p.name):(p.nameEn||p.name))}</td><td class="ds">${esc(p.specs||'')}</td><td>${p.url?`<a href="${esc(p.url)}" target="_blank" rel="noopener">${L.view}</a>`:''}</td><td>${p.qty!=null?p.qty:''}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join('');
-    const doc=`<!DOCTYPE html><html lang="${lang}"><head><meta charset="UTF-8"><title>${esc(L.title)} - ${esc(S.brand)}</title>
+    const nameHtml=p=>{let ls=ord.map(l=>RFQ_NAMEVAL[l](p)).filter(Boolean);if(!ls.length)ls=[p.name];return ls.map((t,k)=>k===0?esc(t):`<div style="font-size:10px;color:#555">${esc(t)}</div>`).join('');};
+    const rowsHtml=items.map((p,i)=>`<tr><td>${i+1}</td><td class="img">${p.image?`<a href="${esc(p.image)}" target="_blank" rel="noopener"><img src="${esc(p.image)}"></a>`:''}</td><td>${esc(p.ref||'')}</td><td class="nm">${nameHtml(p)}</td><td class="ds">${esc(p.specs||'')}</td><td>${p.url?`<a href="${esc(p.url)}" target="_blank" rel="noopener">${L.view}</a>`:''}</td><td>${p.qty!=null?p.qty:''}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join('');
+    const doc=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(L.title)} - ${esc(S.brand)}</title>
 <style>body{font-family:Arial,"Microsoft YaHei","PingFang SC",sans-serif;margin:24px;color:#1a2433}
 h1{font-size:20px;margin:0 0 4px}.meta{color:#555;font-size:13px;margin-bottom:6px}.note{font-size:12px;color:#555;margin:6px 0 14px}
 table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid #bbb;padding:5px 6px;vertical-align:top}
@@ -733,7 +743,7 @@ tr:nth-child(even) td{background:#f7f9fc}.btn{background:#1f6feb;color:#fff;bord
 <div class="note">${esc(L.sub)}</div>
 <table><thead><tr><th>${L.no}</th><th>${L.img}</th><th>${L.ref}</th><th>${L.name}</th><th>${L.desc}</th><th>${L.link}</th><th>${L.qty}</th><th>${L.price}</th><th>${L.moq}</th><th>${L.lead}</th><th>${L.incoterm}</th><th>${L.sample}</th><th>${L.remark}</th></tr></thead>
 <tbody>${rowsHtml}</tbody></table></body></html>`;
-    download('RFQ-'+(lang==='zh'?'CN-':'')+new Date().toISOString().slice(0,10)+'.html',doc,'text/html');
+    download('RFQ-'+new Date().toISOString().slice(0,10)+'.html',doc,'text/html');
   }
   closeModal();
 }
