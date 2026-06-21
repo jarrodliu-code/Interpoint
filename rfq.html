@@ -63,7 +63,7 @@ async function load(){
 function render(items,brand,Lx){
   const rows=items.map((p,i)=>`<tr>
     <td>${i+1}</td>
-    <td class="img">${p.image?`<a href="${esc(p.image)}" target="_blank" rel="noopener"><img src="${esc(p.image)}" loading="lazy"></a><div class="u"><a href="${esc(p.image)}" target="_blank" rel="noopener">${esc(p.image)}</a></div>`:''}</td>
+    <td class="img">${p.image?`<a href="${esc(p.image)}" target="_blank" rel="noopener"><img src="${esc(p.image)}" loading="lazy"></a>`:''}</td>
     <td>${esc(p.ref||'')}</td>
     <td class="nm">${esc(p.name)}</td>
     <td class="ds">${esc(p.specs||'')}</td>

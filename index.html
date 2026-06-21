@@ -717,7 +717,7 @@ function exportRfqDoc(){
     items.forEach((p,i)=>lines.push([i+1,p.ref,p.name,p.specs,p.url,p.image,p.qty,'','','','','',''].map(csvCell).join(',')));
     download('RFQ-'+(lang==='zh'?'CN-':'')+new Date().toISOString().slice(0,10)+'.csv','﻿'+lines.join('\r\n'),'text/csv');
   }else{
-    const rowsHtml=items.map((p,i)=>`<tr><td>${i+1}</td><td class="img">${p.image?`<a href="${esc(p.image)}" target="_blank" rel="noopener"><img src="${esc(p.image)}"></a><div class="u"><a href="${esc(p.image)}" target="_blank" rel="noopener">${esc(p.image)}</a></div>`:''}</td><td>${esc(p.ref||'')}</td><td class="nm">${esc(p.name)}</td><td class="ds">${esc(p.specs||'')}</td><td>${p.url?`<a href="${esc(p.url)}" target="_blank" rel="noopener">${L.view}</a>`:''}</td><td>${p.qty!=null?p.qty:''}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join('');
+    const rowsHtml=items.map((p,i)=>`<tr><td>${i+1}</td><td class="img">${p.image?`<a href="${esc(p.image)}" target="_blank" rel="noopener"><img src="${esc(p.image)}"></a>`:''}</td><td>${esc(p.ref||'')}</td><td class="nm">${esc(p.name)}</td><td class="ds">${esc(p.specs||'')}</td><td>${p.url?`<a href="${esc(p.url)}" target="_blank" rel="noopener">${L.view}</a>`:''}</td><td>${p.qty!=null?p.qty:''}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join('');
     const doc=`<!DOCTYPE html><html lang="${lang}"><head><meta charset="UTF-8"><title>${esc(L.title)} - ${esc(S.brand)}</title>
 <style>body{font-family:Arial,"Microsoft YaHei","PingFang SC",sans-serif;margin:24px;color:#1a2433}
 h1{font-size:20px;margin:0 0 4px}.meta{color:#555;font-size:13px;margin-bottom:6px}.note{font-size:12px;color:#555;margin:6px 0 14px}
