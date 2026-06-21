@@ -443,7 +443,7 @@ function renderProducts(){
 }
 function quotesTable(pid){
   const b=bestQuote(pid);const qs=S.quotes.filter(q=>q.productId===pid).sort((a,b)=>(a.price??1e9)-(b.price??1e9));
-  return `<table style="margin-top:6px"><thead><tr><th>Supplier</th><th class="right">Price</th><th class="right">MOQ</th><th>Lead</th><th>Incoterm</th><th>Sample</th><th></th></tr></thead><tbody>${qs.map(q=>`<tr class="qrow"><td>${esc(supName(q.supplierId))}</td><td class="right ${b&&q.id===b.id?'best':''}">${q.price!=null?money(q.price):'—'}</td><td class="right">${q.moq||'—'}</td><td>${esc(q.lead||'—')}</td><td>${esc(q.incoterm||'—')}</td><td>${q.sample!=null?money(q.sample):'—'}</td><td class="right"><button class="btn sm ghost" onclick="openQuote('${pid}','${q.id}')">Edit</button> <button class="btn sm danger" onclick="delQuote('${q.id}')">✕</button></td></tr>${q.notes?`<tr class="qrow"><td colspan="7" class="muted" style="font-size:12px">${esc(q.notes)}</td></tr>`:''}`).join('')}</tbody></table>`;
+  return `<table style="margin-top:6px"><thead><tr><th>Supplier</th><th class="right">Price</th><th class="right">MOQ</th><th>Lead</th><th>Incoterm</th><th>Sample</th><th></th></tr></thead><tbody>${qs.map(q=>`<tr class="qrow"><td>${esc(supName(q.supplierId))}</td><td class="right ${b&&q.id===b.id?'best':''}">${q.price!=null?money(q.price):'—'}</td><td class="right">${q.moq||'—'}</td><td>${esc(q.lead||'—')}</td><td>${esc(q.incoterm||'—')}</td><td>${q.sample!=null?money(q.sample):'—'}</td><td class="right"><button class="btn sm ghost" onclick="openQuote('${pid}','${q.id}')">Edit</button> <button class="btn sm danger" title="Delete this quote only" onclick="delQuote('${q.id}')">✕ quote</button></td></tr>${q.notes?`<tr class="qrow"><td colspan="7" class="muted" style="font-size:12px">${esc(q.notes)}</td></tr>`:''}`).join('')}</tbody></table>`;
 }
 
 /* ---------- modal ---------- */
@@ -467,7 +467,7 @@ function openProduct(id){
     <div class="grid2"><div class="fld"><label>Image URL</label><input id="f_image" value="${esc(p.image||'')}" placeholder="https://…"></div>
     <div class="fld"><label>Product page URL</label><input id="f_url" value="${esc(p.url||'')}" placeholder="https://…"></div></div>
     <div class="fld"><label>Notes</label><textarea id="f_notes" rows="2">${esc(p.notes||'')}</textarea></div>`;
-  const foot=`${id?`<button class="btn danger" style="margin-right:auto" onclick="delProduct('${id}')">Delete</button>`:''}<button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveProduct('${id||''}')">${id?'Save':'Add product'}</button>`;
+  const foot=`${id?`<button class="btn danger" style="margin-right:auto" onclick="delProduct('${id}')">Delete product</button>`:''}<button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveProduct('${id||''}')">${id?'Save':'Add product'}</button>`;
   openModal(id?'Edit product':'Add product',body,foot);setTimeout(()=>document.getElementById('f_name').focus(),50);
 }
 async function saveProduct(id){
@@ -497,7 +497,7 @@ function openQuote(pid,qid){
     <div class="fld"><label>Incoterm</label><select id="q_inc">${['EXW','FOB','CIF','DDP'].map(i=>`<option ${i===q.incoterm?'selected':''}>${i}</option>`).join('')}</select></div></div>
     <div class="grid2"><div class="fld"><label>Sample cost (€)</label><input id="q_sample" value="${esc(q.sample)}"></div></div>
     <div class="fld"><label>Notes</label><textarea id="q_notes" rows="2">${esc(q.notes||'')}</textarea></div>`;
-  const foot=`${qid?`<button class="btn danger" style="margin-right:auto" onclick="delQuote('${qid}',true)">Delete</button>`:''}<button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn green" onclick="saveQuote('${pid}','${qid||''}')">${qid?'Save quote':'Add quote'}</button>`;
+  const foot=`${qid?`<button class="btn danger" style="margin-right:auto" onclick="delQuote('${qid}',true)">Delete quote</button>`:''}<button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn green" onclick="saveQuote('${pid}','${qid||''}')">${qid?'Save quote':'Add quote'}</button>`;
   openModal(qid?'Edit quote':'Add quote',body,foot);
 }
 async function saveQuote(pid,qid){
