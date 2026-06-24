@@ -85,7 +85,7 @@ function render(items,brand,Lx){
     <td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join('');
   document.getElementById('app').innerHTML=`
     <h1>${esc(Lx.title)}</h1>
-    <div class="meta">${Lx.from}: ${esc(brand)} &nbsp;|&nbsp; ${Lx.date}: ${new Date().toISOString().slice(0,10)} &nbsp;|&nbsp; ${items.length} ${labelLang==='zh'?'项':'items'}</div>
+    <div class="meta">${Lx.from}: ${esc(brand)} &nbsp;|&nbsp; ✉ jarrodliu@hotmail.com &nbsp;|&nbsp; ${Lx.date}: ${new Date().toISOString().slice(0,10)} &nbsp;|&nbsp; ${items.length} ${labelLang==='zh'?'项':'items'}</div>
     <div class="note">${esc(Lx.sub)}</div>
     <div class="bar"><button class="btn" onclick="window.print()">${Lx.print}</button></div>
     <table><thead><tr>

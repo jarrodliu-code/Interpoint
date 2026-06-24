@@ -134,6 +134,7 @@
     <button data-v="transport">Transport</button>
     <button data-v="suppliers">Suppliers</button>
     <button data-v="buyers">Buyers</button>
+    <button data-v="requests">Requests</button>
     <button data-v="data">Import / Export</button>
   </nav>
   <div class="userbox">
@@ -145,6 +146,7 @@
   <option value="dash">Dashboard</option><option value="products">Products</option>
   <option value="transport">Transport</option>
   <option value="suppliers">Suppliers</option><option value="buyers">Buyers</option>
+  <option value="requests">Requests</option>
   <option value="data">Import / Export</option>
 </select>
 
@@ -215,6 +217,30 @@
       <tbody id="bbody"></tbody></table><div id="bempty"></div></div></div>
   </section>
 
+  <section id="v-requests" class="view">
+    <h2 class="title">Procurement requests</h2>
+    <p class="sub">Buyers: tell us what you need sourced — including your target price. We'll take it from there.</p>
+    <div class="panel"><div class="ph"><h3>① Submit a requirement</h3></div><div class="pb">
+      <div class="grid2">
+        <div class="fld"><label>Your name / company *</label><input id="rq_buyer" placeholder="e.g. Adriatic MedSupply"></div>
+        <div class="fld"><label>Product / item needed *</label><input id="rq_item" placeholder="e.g. Nitrile exam gloves, blue, size M"></div>
+      </div>
+      <div class="grid3">
+        <div class="fld"><label>Category</label><select id="rq_cat"></select></div>
+        <div class="fld"><label>Quantity</label><input id="rq_qty" placeholder="e.g. 50000"></div>
+        <div class="fld"><label>Target price (€ / unit)</label><input id="rq_target" placeholder="optional"></div>
+      </div>
+      <div class="fld"><label>Specifications / requirements</label><textarea id="rq_specs" rows="2" placeholder="Material, size, certifications (CE/MDR, ISO…), packaging, deadline"></textarea></div>
+      <div class="fld"><label>Notes (anything else)</label><textarea id="rq_notes" rows="2"></textarea></div>
+      <button class="btn green" onclick="submitRequest()">Submit requirement</button>
+      <div id="rqResult" class="hint" style="margin-top:10px"></div>
+    </div></div>
+    <div class="panel"><div class="ph"><h3>② Submitted requirements</h3><span class="muted" style="margin-left:auto;font-size:12px">Newest first</span></div>
+      <div class="pb" style="padding:0;overflow:auto">
+        <table><thead><tr><th>Date</th><th>Buyer</th><th>Item</th><th>Category</th><th class="right">Qty</th><th class="right">Target</th><th>Status</th><th></th></tr></thead>
+        <tbody id="rqbody"></tbody></table><div id="rqempty"></div></div></div>
+  </section>
+
   <section id="v-data" class="view">
     <h2 class="title">Import / Export</h2><p class="sub">Add more products in bulk, or export a buyer quote sheet.</p>
     <div class="panel"><div class="ph"><h3>① Import more products (paste from Excel)</h3></div><div class="pb">
@@ -241,7 +267,7 @@
         <button class="btn ghost" onclick="backup()">⬇ Download backup (.json)</button></div></div>
     </div>
   </section>
-  <div class="footer">Connected to your team workspace · <span id="savedStamp"></span></div>
+  <div class="footer">Connected to your team workspace · Contact: <a href="mailto:jarrodliu@hotmail.com">jarrodliu@hotmail.com</a> · <span id="savedStamp"></span></div>
 </main>
 </div>
 
@@ -259,7 +285,9 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const CATS=[{k:"Medical",cls:"cat-med"},{k:"Hotel Furniture & Supply",cls:"cat-hotel"},{k:"Electronics",cls:"cat-elec"},{k:"Cold Storage",cls:"cat-cold"},{k:"Other",cls:"cat-other"}];
 const STATUSES=["New","RFQ","Quoted","Sampling","Approved","Ordered","Hold"];
 const STLABEL={New:"New",RFQ:"RFQ sent",Quoted:"Quoted",Sampling:"Sampling",Approved:"Approved",Ordered:"Ordered",Hold:"On hold"};
-let S={brand:"Interpoint",brandSub:"China → Europe sourcing",products:[],suppliers:[],buyers:[],quotes:[],carriers:[],shipments:[]};
+let S={brand:"Interpoint",brandSub:"China → Europe sourcing",products:[],suppliers:[],buyers:[],quotes:[],carriers:[],shipments:[],requests:[]};
+const CONTACT_EMAIL="jarrodliu@hotmail.com";
+const REQSTATUS=["Submitted","Reviewing","Sourcing","Quoted","Closed"];
 let rfqPick=new Set(), lastFilteredIds=[];
 let I18N={cat:{},sub:{}};
 
@@ -280,6 +308,8 @@ const supToRow=s=>({id:s.id,name:s.name,category:s.category||null,location:s.loc
 const carrierToRow=c=>({id:c.id,name:c.name,mode:c.mode||null,routes:c.routes||null,contact:c.contact||null,rates:c.rates||null,notes:c.notes||null});
 const shipmentFromRow=r=>({id:r.id,ref:r.ref,carrierId:r.carrier_id||'',origin:r.origin,destination:r.destination,mode:r.mode,container:r.container,cost:r.cost,transit:r.transit,status:r.status||'Quote',buyerId:r.buyer_id||'',notes:r.notes});
 const shipmentToRow=s=>({id:s.id,ref:s.ref||null,carrier_id:s.carrierId||null,origin:s.origin||null,destination:s.destination||null,mode:s.mode||null,container:s.container||null,cost:s.cost,transit:s.transit||null,status:s.status,buyer_id:s.buyerId||null,notes:s.notes||null});
+const requestFromRow=r=>({id:r.id,buyer:r.buyer_name||'',item:r.item,category:r.category,qty:r.qty,target:r.target,specs:r.specs,notes:r.notes,status:r.status||'Submitted',created:r.created_at});
+const requestToRow=q=>({id:q.id,buyer_name:q.buyer||null,item:q.item,category:q.category||null,qty:q.qty,target:q.target,specs:q.specs||null,notes:q.notes||null,status:q.status});
 
 /* ---------- helpers ---------- */
 function bestQuote(pid){const qs=S.quotes.filter(q=>q.productId===pid&&q.price!=null);if(!qs.length)return null;return qs.reduce((a,b)=>b.price<a.price?b:a)}
@@ -344,6 +374,8 @@ async function loadAll(){
     renderAll();stamp();
     try{S.carriers=await fetchAll('carriers');S.shipments=await fetchAll('shipments',shipmentFromRow);renderAll();}
     catch(_){/* transport tables not set up yet — run transport.sql */}
+    try{S.requests=await fetchAll('requests',requestFromRow);renderAll();}
+    catch(_){/* requests table not set up yet — run requests.sql */}
   }catch(e){
     err('Could not load data: '+e.message+'  — have you run schema.sql and imported products.csv in Supabase?');
   }
@@ -353,8 +385,8 @@ function subscribe(){
   channel=db.channel('ws')
     .on('postgres_changes',{event:'*',schema:'public'},payload=>{
       const t=payload.table;
-      if(['products','suppliers','buyers','quotes','carriers','shipments'].includes(t)){
-        const map=t==='products'?prodFromRow:t==='quotes'?quoteFromRow:t==='shipments'?shipmentFromRow:(x=>x);
+      if(['products','suppliers','buyers','quotes','carriers','shipments','requests'].includes(t)){
+        const map=t==='products'?prodFromRow:t==='quotes'?quoteFromRow:t==='shipments'?shipmentFromRow:t==='requests'?requestFromRow:(x=>x);
         if(payload.eventType==='DELETE'){removeLocal(t,payload.old.id)}
         else{upsertLocal(t,map(payload.new))}
       }else if(t==='settings'&&payload.new){S.brand=payload.new.brand;S.brandSub=payload.new.brand_sub}
@@ -374,14 +406,14 @@ function show(v){
 document.getElementById('nav').addEventListener('click',e=>{if(e.target.dataset.v)show(e.target.dataset.v)});
 
 /* ---------- render: dashboard ---------- */
-function renderAll(){fillFilters();paintBrand();renderProducts();renderSuppliers();renderBuyers();renderTransport();renderDash()}
+function renderAll(){fillFilters();paintBrand();renderProducts();renderSuppliers();renderBuyers();renderTransport();renderRequests();renderDash()}
 function renderDash(){
   const p=S.products;
   const quoted=p.filter(x=>bestQuote(x.id)).length;
   const valQ=p.reduce((s,x)=>{const b=bestQuote(x.id);return s+(b&&x.qty?b.price*x.qty:0)},0);
   const cards=[[p.length,"Products","--accent"],[S.suppliers.length,"Suppliers","--accent2"],[S.buyers.length,"Buyers","--navy"],
     [quoted,"Products with a quote","--warn"],[S.quotes.length,"Quotes logged","--accent"],[money(valQ),"Best-quote order value","--accent2"],
-    [S.carriers.length,"Transport providers","--navy"],[S.shipments.length,"Shipments","--accent"]];
+    [S.carriers.length,"Transport providers","--navy"],[S.shipments.length,"Shipments","--accent"],[S.requests.length,"Buyer requests","--warn"]];
   document.getElementById('statCards').innerHTML=cards.map(c=>`<div class="stat"><div class="n">${c[0]}</div><div class="l">${c[1]}</div><div class="bar" style="background:var(${c[2]})"></div></div>`).join('');
   const counts={};STATUSES.forEach(s=>counts[s]=0);p.forEach(x=>counts[x.status]=(counts[x.status]||0)+1);
   const max=Math.max(1,...Object.values(counts));
@@ -405,6 +437,7 @@ function fillFilters(){
   const sel=id=>document.getElementById(id);
   sel('pcat').innerHTML='<option value="">All categories</option>'+CATS.map(c=>`<option>${c.k}</option>`).join('');
   sel('impCat').innerHTML=CATS.map(c=>`<option>${c.k}</option>`).join('');
+  sel('rq_cat').innerHTML=CATS.map(c=>`<option>${c.k}</option>`).join('');
   sel('pstat').innerHTML='<option value="">All statuses</option>'+STATUSES.map(s=>`<option value="${s}">${STLABEL[s]}</option>`).join('');
   sel('pbuyer').innerHTML='<option value="">All buyers</option>'+S.buyers.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');
   const curM=sel('pmcat').value, mcats=[...new Set(S.products.map(mcatOf).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
@@ -642,6 +675,60 @@ async function delShipment(id){
   removeLocal('shipments',id);closeModal();renderAll();
 }
 
+/* ---------- procurement requests (buyer self-input) ---------- */
+function reqSt(s){return {Submitted:'New',Reviewing:'RFQ',Sourcing:'Sampling',Quoted:'Quoted',Closed:'Ordered'}[s]||'New'}
+function renderRequests(){
+  const rows=[...S.requests].sort((a,b)=>String(b.created||'').localeCompare(String(a.created||'')));
+  document.getElementById('rqbody').innerHTML=rows.map(r=>`<tr>
+    <td class="nowrap muted" style="font-size:12px">${r.created?esc(String(r.created).slice(0,10)):''}</td>
+    <td><b>${esc(r.buyer||'')}</b></td>
+    <td>${esc(r.item)}${r.specs?`<div class="muted" style="font-size:12px;max-width:280px">${esc(r.specs)}</div>`:''}</td>
+    <td>${r.category?`<span class="tag ${catCls(r.category)}">${esc(r.category)}</span>`:'—'}</td>
+    <td class="right">${r.qty?Number(r.qty).toLocaleString():'—'}</td>
+    <td class="right">${r.target!=null?money(r.target):'—'}</td>
+    <td><span class="st st-${reqSt(r.status)}">${esc(r.status||'Submitted')}</span></td>
+    <td class="right"><button class="btn sm ghost" onclick="openRequest('${r.id}')">Open</button></td></tr>`).join('');
+  document.getElementById('rqempty').innerHTML=rows.length?'':'<div class="empty">No requests yet — buyers can submit one in the form above.</div>';
+}
+async function submitRequest(){
+  const g=i=>document.getElementById(i).value.trim();
+  const buyer=g('rq_buyer'), item=g('rq_item'); const res=document.getElementById('rqResult');
+  if(!buyer||!item){res.innerHTML='<span style="color:var(--danger)">Please fill in your name and the product needed.</span>';return}
+  const rec={id:uid('rq'),buyer,item,category:g('rq_cat'),qty:num(g('rq_qty')),target:num(g('rq_target')),specs:g('rq_specs'),notes:g('rq_notes'),status:'Submitted'};
+  const {error}=await db.from('requests').upsert(requestToRow(rec));
+  if(error){res.innerHTML='<span style="color:var(--danger)">Could not submit: '+esc(error.message)+(/requests/.test(error.message)?'  — the Requests table needs requests.sql run once in Supabase.':'')+'</span>';return}
+  rec.created=new Date().toISOString();upsertLocal('requests',rec);renderRequests();renderDash();
+  ['rq_buyer','rq_item','rq_qty','rq_target','rq_specs','rq_notes'].forEach(i=>document.getElementById(i).value='');
+  res.innerHTML='<b style="color:var(--ok)">✓ Thank you — your requirement was submitted.</b> We will get back to you at '+esc(CONTACT_EMAIL)+'.';
+}
+function openRequest(id){
+  const r=S.requests.find(x=>x.id===id);if(!r)return;
+  const body=`<div class="grid2"><div class="fld"><label>Buyer</label><input id="er_buyer" value="${esc(r.buyer||'')}"></div>
+    <div class="fld"><label>Status</label><select id="er_status">${REQSTATUS.map(s=>`<option ${s===r.status?'selected':''}>${s}</option>`).join('')}</select></div></div>
+    <div class="fld"><label>Item</label><input id="er_item" value="${esc(r.item)}"></div>
+    <div class="grid3"><div class="fld"><label>Category</label><select id="er_cat">${CATS.map(c=>`<option ${c.k===r.category?'selected':''}>${c.k}</option>`).join('')}</select></div>
+    <div class="fld"><label>Quantity</label><input id="er_qty" value="${esc(r.qty)}"></div>
+    <div class="fld"><label>Target (€)</label><input id="er_target" value="${esc(r.target)}"></div></div>
+    <div class="fld"><label>Specs / requirements</label><textarea id="er_specs" rows="2">${esc(r.specs||'')}</textarea></div>
+    <div class="fld"><label>Notes</label><textarea id="er_notes" rows="2">${esc(r.notes||'')}</textarea></div>`;
+  const foot=`<button class="btn danger" style="margin-right:auto" onclick="delRequest('${id}')">Delete</button><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveRequest('${id}')">Save</button>`;
+  openModal('Request — '+(r.buyer||''),body,foot);
+}
+async function saveRequest(id){
+  const g=i=>document.getElementById(i).value.trim();
+  const rec={id,buyer:g('er_buyer'),item:g('er_item'),category:g('er_cat'),qty:num(g('er_qty')),target:num(g('er_target')),specs:g('er_specs'),notes:g('er_notes'),status:g('er_status')};
+  const old=S.requests.find(x=>x.id===id);if(old)rec.created=old.created;
+  const {error}=await db.from('requests').upsert(requestToRow(rec));
+  if(error){alert('Save failed: '+error.message);return}
+  upsertLocal('requests',rec);closeModal();renderRequests();renderDash();
+}
+async function delRequest(id){
+  if(!confirm('Delete this request?'))return;
+  const {error}=await db.from('requests').delete().eq('id',id);
+  if(error){alert('Delete failed: '+error.message);return}
+  removeLocal('requests',id);closeModal();renderRequests();renderDash();
+}
+
 /* ---------- import / export ---------- */
 function splitRow(line){return line.includes('\t')?line.split('\t'):line.split(',').map(c=>c.replace(/^"|"$/g,''))}
 async function doImport(){
@@ -749,7 +836,7 @@ tr:nth-child(even) td{background:#f7f9fc}.btn{background:#1f6feb;color:#fff;bord
 @media print{.noprint{display:none}}</style></head>
 <body><button class="btn noprint" onclick="window.print()" style="float:right">🖨 Print / Save PDF</button>
 <h1>${esc(L.title)}</h1>
-<div class="meta">${L.from}: ${esc(S.brand)} &nbsp;|&nbsp; ${L.date}: ${new Date().toISOString().slice(0,10)} &nbsp;|&nbsp; ${L.supplier}: ____________________</div>
+<div class="meta">${L.from}: ${esc(S.brand)} &nbsp;|&nbsp; ✉ ${CONTACT_EMAIL} &nbsp;|&nbsp; ${L.date}: ${new Date().toISOString().slice(0,10)} &nbsp;|&nbsp; ${L.supplier}: ____________________</div>
 <div class="note">${esc(L.sub)}</div>
 <table><thead><tr><th>${H('no')}</th><th>${H('img')}</th><th>${H('ref')}</th><th>${H('name')}</th><th>${H('desc')}</th><th>${H('link')}</th><th>${H('qty')}</th><th>${H('price')}</th><th>${H('moq')}</th><th>${H('lead')}</th><th>${H('incoterm')}</th><th>${H('sample')}</th><th>${H('remark')}</th></tr></thead>
 <tbody>${rowsHtml}</tbody></table></body></html>`;
