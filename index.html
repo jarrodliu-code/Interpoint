@@ -528,7 +528,7 @@ function attachEvents(){
           estimatedTotal:state.garment!=="other"?"$"+finalTotal():"TBC",
           lang:state.lang
         };
-        fetch(APPS_SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
+        fetch(APPS_SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify(data)});
       }catch(e){}
     }
     setState({showQR:true});
