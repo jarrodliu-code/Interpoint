@@ -138,7 +138,7 @@
     <button data-v="data">Import / Export</button>
   </nav>
   <div class="userbox">
-    <select id="uiLang" onchange="applyUILang(this.value);renderAll()" title="Interface language" style="background:rgba(255,255,255,.15);color:#fff;border:0;border-radius:6px;padding:5px 8px;font-size:12.5px;cursor:pointer">
+    <select id="uiLang" onchange="applyUILang(this.value)" title="Interface language" style="background:rgba(255,255,255,.15);color:#fff;border:0;border-radius:6px;padding:5px 8px;font-size:12.5px;cursor:pointer">
       <option value="en">EN</option><option value="zh">中文</option></select>
     <span class="syncdot" id="syncdot" title="Live sync"></span>
     <span style="color:#9db4cc">Live</span>
@@ -311,18 +311,39 @@ const UITEXT={
   "Your name / company *":"您的名称 / 公司 *","Product / item needed *":"所需产品 *","Quantity":"数量","Target price (€ / unit)":"目标价（€ / 单位）","Specifications / requirements":"规格 / 要求","Notes (anything else)":"备注（其他）",
   "Products with a quote":"已有报价的产品","Quotes logged":"已记录报价","Best-quote order value":"最优报价订单额","Shipments":"运单","Buyer requests":"买家需求",
   "New":"新","RFQ sent":"已发询价","Quoted":"已报价","Sampling":"打样中","Approved":"已批准","Ordered":"已下单","On hold":"暂缓",
-  "products":"件产品","Nothing pending. 🎉":"暂无待办 🎉"
+  "products":"件产品","Nothing pending. 🎉":"暂无待办 🎉",
+  "Request":"申请","Edit":"编辑","+ Quote":"+ 报价","Open":"打开","✕ quote":"✕ 报价","Delete":"删除","Save":"保存","Cancel":"取消","Save changes":"保存更改","Add product":"添加产品","Add quote":"添加报价","Save quote":"保存报价","Delete quote":"删除报价","Delete product":"删除产品","Add supplier":"添加供应商","Add buyer":"添加买家","Add provider":"添加服务商","Add shipment":"添加运单","Submit request":"提交申请","Build RFQ list ▸":"生成询价单 ▸","Clear":"清空","⬇ Generate & download":"⬇ 生成并下载","🔗 Copy shareable link":"🔗 复制分享链接","⬇ Download quote sheet (CSV)":"⬇ 下载报价表(CSV)","⬇ Download backup (.json)":"⬇ 下载备份(.json)","Import to cloud":"导入到云端",
+  "Edit product":"编辑产品","Edit quote":"编辑报价","Edit supplier":"编辑供应商","Add transport provider":"添加物流服务商","Edit provider":"编辑服务商","Edit shipment":"编辑运单","Edit buyer":"编辑买家","Build RFQ list":"生成询价单","Request this product":"申请此产品",
+  "Product name * (original)":"产品名称 *（原文）","Name (English)":"名称（英文）","Reference":"编号","Target price (€)":"目标价（€）","Specs / requirements (description)":"规格 / 要求（描述）","Image URL":"图片链接","Product page URL":"产品页面链接",
+  "Unit price (€) *":"单价（€）*","MOQ":"最小起订量","Lead time":"交货期","Incoterm":"贸易术语","Sample cost (€)":"样品费（€）","Notes (quality, packaging, validity…)":"备注（质量、包装、有效期…）","Price":"价格","Lead":"交货","Sample":"样品",
+  "Supplier / factory name *":"供应商 / 工厂名称 *","Main category":"主要品类","Contact (person, WeChat, email, phone)":"联系方式（人员、微信、邮箱、电话）","Notes (certifications, verification…)":"备注（认证、核验…）",
+  "Buyer / company *":"买家 / 公司 *","Provider / forwarder name *":"服务商 / 货代名称 *","Contact (person, email, phone, WeChat)":"联系方式（人员、邮箱、电话、微信）","Rates / pricing notes":"费率 / 价格备注",
+  "Origin":"起运地","Destination":"目的地","Container / load":"箱型 / 装载","Cost (€)":"费用（€）","Transit time":"运输时间","Buyer (optional)":"买家（可选）",
+  "Target (€)":"目标价（€）","Specs / requirements":"规格 / 要求","Notes (deadline, packaging, certifications…)":"备注（截止日期、包装、认证…）",
+  "Output languages (tick any)":"输出语言（可多选）","Format":"格式","Croatian":"克罗地亚语","English":"英文","Printable sheet with images (HTML)":"带图片可打印表（HTML）","Spreadsheet (CSV)":"电子表格（CSV）",
+  "All categories":"全部品类","All statuses":"全部状态","All buyers":"全部买家","All medical groups":"全部医疗分类","All sub-categories":"全部子分类","All buyers (full list)":"全部买家（完整清单）","Sort: Ref":"排序：编号","Sort: Name A→Z":"排序：名称 A→Z","Sort: Category ▸ sub-category":"排序：品类 ▸ 子分类",
+  "Medical":"医疗","Hotel Furniture & Supply":"酒店家具与用品","Electronics":"电子产品","Cold Storage":"冷藏","Other":"其他",
+  "Submitted":"已提交","Reviewing":"审核中","Sourcing":"寻源中","Closed":"已关闭",
+  "First row is a header":"首行为表头","Default category if blank":"若为空则默认此品类","Backup":"备份",
+  "No products match.":"没有匹配的产品。","No suppliers yet.":"暂无供应商。","No buyers yet.":"暂无买家。","No transport providers yet. Add your freight forwarders.":"暂无物流服务商，请添加货代。","No shipments yet.":"暂无运单。","No requests yet — buyers can submit one in the form above.":"暂无需求 —— 买家可在上方表单提交。","No products yet.":"暂无产品。"
 };
 let UILANG=localStorage.getItem('ui_lang')||'en';
 function UI(s){return (UILANG==='zh'&&UITEXT[s]!==undefined)?UITEXT[s]:s;}
+function tzh(t){if(UITEXT[t]!==undefined)return UITEXT[t];if(I18N.cat&&I18N.cat[t])return I18N.cat[t].zh;if(I18N.sub&&I18N.sub[t])return I18N.sub[t].zh;return undefined;}
+/* Translate UI leaves. Captures original English once (data-en) so switching back restores it. Idempotent. */
+function translateUI(root){
+  (root||document).querySelectorAll('#mobnav option, h2.title, p.sub, button, th, label, option, summary, h3, .l, .st, .tag, .empty, .hint').forEach(el=>{
+    if(el.children.length)return;
+    if(el.dataset.en===undefined)el.dataset.en=el.textContent.trim();
+    const en=el.dataset.en, z=tzh(en), target=(UILANG==='zh'&&z!==undefined)?z:en;
+    if(el.tagName==='OPTION'&&!el.getAttribute('value'))el.setAttribute('value',en);
+    if(el.textContent!==target)el.textContent=target;
+  });
+}
 function applyUILang(l){
   UILANG=(l==='zh')?'zh':'en'; localStorage.setItem('ui_lang',UILANG);
   const sel=document.getElementById('uiLang'); if(sel)sel.value=UILANG;
-  document.querySelectorAll('#nav button, #mobnav option, h2.title, p.sub, .ph h3, .toolbar>button, thead th, #v-requests label').forEach(el=>{
-    if(el.children.length)return;
-    if(el.dataset.en===undefined)el.dataset.en=el.textContent.trim();
-    el.textContent=(UILANG==='zh'&&UITEXT[el.dataset.en]!==undefined)?UITEXT[el.dataset.en]:el.dataset.en;
-  });
+  renderAll();
 }
 let rfqPick=new Set(), lastFilteredIds=[];
 let I18N={cat:{},sub:{}};
@@ -438,11 +459,12 @@ function show(v){
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active',b.dataset.v===v));
   document.getElementById('mobnav').value=v;window.scrollTo(0,0);
   if(v==='dash')renderDash();
+  translateUI(document);
 }
 document.getElementById('nav').addEventListener('click',e=>{if(e.target.dataset.v)show(e.target.dataset.v)});
 
 /* ---------- render: dashboard ---------- */
-function renderAll(){fillFilters();paintBrand();renderProducts();renderSuppliers();renderBuyers();renderTransport();renderRequests();renderDash()}
+function renderAll(){fillFilters();paintBrand();renderProducts();renderSuppliers();renderBuyers();renderTransport();renderRequests();renderDash();translateUI(document)}
 function renderDash(){
   const p=S.products;
   const quoted=p.filter(x=>bestQuote(x.id)).length;
@@ -450,14 +472,14 @@ function renderDash(){
   const cards=[[p.length,"Products","--accent"],[S.suppliers.length,"Suppliers","--accent2"],[S.buyers.length,"Buyers","--navy"],
     [quoted,"Products with a quote","--warn"],[S.quotes.length,"Quotes logged","--accent"],[money(valQ),"Best-quote order value","--accent2"],
     [S.carriers.length,"Transport providers","--navy"],[S.shipments.length,"Shipments","--accent"],[S.requests.length,"Buyer requests","--warn"]];
-  document.getElementById('statCards').innerHTML=cards.map(c=>`<div class="stat"><div class="n">${c[0]}</div><div class="l">${UI(c[1])}</div><div class="bar" style="background:var(${c[2]})"></div></div>`).join('');
+  document.getElementById('statCards').innerHTML=cards.map(c=>`<div class="stat"><div class="n">${c[0]}</div><div class="l">${c[1]}</div><div class="bar" style="background:var(${c[2]})"></div></div>`).join('');
   const counts={};STATUSES.forEach(s=>counts[s]=0);p.forEach(x=>counts[x.status]=(counts[x.status]||0)+1);
   const max=Math.max(1,...Object.values(counts));
-  document.getElementById('pipeline').innerHTML=STATUSES.map(s=>`<div style="display:flex;align-items:center;gap:10px;margin:7px 0"><span class="st st-${s}" style="min-width:84px;text-align:center">${UI(STLABEL[s])}</span><div style="flex:1;background:#eef2f7;border-radius:6px;height:18px;overflow:hidden"><div style="height:100%;width:${counts[s]/max*100}%;background:var(--accent);min-width:${counts[s]?'22px':'0'};border-radius:6px"></div></div><b style="min-width:26px;text-align:right">${counts[s]}</b></div>`).join('');
+  document.getElementById('pipeline').innerHTML=STATUSES.map(s=>`<div style="display:flex;align-items:center;gap:10px;margin:7px 0"><span class="st st-${s}" style="min-width:84px;text-align:center">${STLABEL[s]}</span><div style="flex:1;background:#eef2f7;border-radius:6px;height:18px;overflow:hidden"><div style="height:100%;width:${counts[s]/max*100}%;background:var(--accent);min-width:${counts[s]?'22px':'0'};border-radius:6px"></div></div><b style="min-width:26px;text-align:right">${counts[s]}</b></div>`).join('');
   const todo=p.filter(x=>(x.status==='New'||x.status==='RFQ')&&!bestQuote(x.id)).slice(0,8);
-  document.getElementById('todo').innerHTML=todo.length?`<table><tbody>${todo.map(x=>`<tr><td><b>${esc(x.name)}</b><div class="muted" style="font-size:12px">${esc(x.ref||'')}</div></td><td><span class="tag ${catCls(x.category)}">${esc(x.category)}</span></td><td class="right"><button class="btn sm ghost" onclick="openProduct('${x.id}')">Open</button></td></tr>`).join('')}</tbody></table>`:`<div class="empty">${UI('Nothing pending. 🎉')}</div>`;
+  document.getElementById('todo').innerHTML=todo.length?`<table><tbody>${todo.map(x=>`<tr><td><b>${esc(x.name)}</b><div class="muted" style="font-size:12px">${esc(x.ref||'')}</div></td><td><span class="tag ${catCls(x.category)}">${esc(x.category)}</span></td><td class="right"><button class="btn sm ghost" onclick="openProduct('${x.id}')">Open</button></td></tr>`).join('')}</tbody></table>`:`<div class="empty">Nothing pending. 🎉</div>`;
   const cc={};p.forEach(x=>cc[x.category]=(cc[x.category]||0)+1);
-  document.getElementById('byCat').innerHTML=CATS.filter(c=>cc[c.k]).map(c=>`<div style="display:flex;align-items:center;gap:10px;margin:8px 0"><span class="tag ${c.cls}" style="min-width:150px">${c.k}</span><b>${cc[c.k]}</b><span class="muted">${UI('products')}</span></div>`).join('')||'<div class="empty">No products yet.</div>';
+  document.getElementById('byCat').innerHTML=CATS.filter(c=>cc[c.k]).map(c=>`<div style="display:flex;align-items:center;gap:10px;margin:8px 0"><span class="tag ${c.cls}" style="min-width:150px">${c.k}</span><b>${cc[c.k]}</b><span class="muted">products</span></div>`).join('')||'<div class="empty">No products yet.</div>';
 }
 
 /* ---------- render: products ---------- */
@@ -508,7 +530,7 @@ function renderProducts(){
       <td class="nowrap right"><button class="btn sm" onclick="openProductRequest('${p.id}')" title="Buyer: request this product">Request</button> <button class="btn sm ghost" onclick="openProduct('${p.id}')">Edit</button> <button class="btn sm green" onclick="openQuote('${p.id}')">+ Quote</button></td></tr>`;}).join('');
   document.getElementById('pempty').innerHTML=!rows.length?`<div class="empty">No products match.</div>`:(rows.length>CAP?`<div class="empty">Showing first ${CAP} of <b>${rows.length}</b> matches — refine search/filters to narrow. (Tick boxes select per row; "select all" covers all ${rows.length} matched.)</div>`:'');
   const pAll=document.getElementById('pAll');if(pAll)pAll.checked=lastFilteredIds.length>0&&lastFilteredIds.every(id=>rfqPick.has(id));
-  updatePickbar();
+  updatePickbar();translateUI(document.getElementById('v-products'));
 }
 function quotesTable(pid){
   const b=bestQuote(pid);const qs=S.quotes.filter(q=>q.productId===pid).sort((a,b)=>(a.price??1e9)-(b.price??1e9));
@@ -516,7 +538,7 @@ function quotesTable(pid){
 }
 
 /* ---------- modal ---------- */
-function openModal(t,b,f){document.getElementById('mTitle').textContent=t;document.getElementById('mBody').innerHTML=b;document.getElementById('mFoot').innerHTML=f;document.getElementById('overlay').classList.add('show')}
+function openModal(t,b,f){document.getElementById('mTitle').textContent=t;document.getElementById('mBody').innerHTML=b;document.getElementById('mFoot').innerHTML=f;document.getElementById('overlay').classList.add('show');translateUI(document.getElementById('overlay'))}
 function closeModal(){document.getElementById('overlay').classList.remove('show')}
 document.getElementById('overlay').addEventListener('click',e=>{if(e.target.id==='overlay')closeModal()});
 
@@ -593,6 +615,7 @@ function renderSuppliers(){
   document.getElementById('sbody').innerHTML=rows.map(s=>{const qc=S.quotes.filter(x=>x.supplierId===s.id).length;
     return `<tr><td><b>${esc(s.name)}</b></td><td>${s.category?`<span class="tag ${catCls(s.category)}">${esc(s.category)}</span>`:'<span class="muted">—</span>'}</td><td>${esc(s.location||'—')}</td><td class="muted" style="font-size:12.5px">${esc(s.contact||'—')}</td><td class="right">${qc}</td><td class="muted" style="font-size:12.5px;max-width:240px">${esc(s.notes||'')}</td><td class="right"><button class="btn sm ghost" onclick="openSupplier('${s.id}')">Edit</button></td></tr>`}).join('');
   document.getElementById('sempty').innerHTML=rows.length?'':'<div class="empty">No suppliers yet.</div>';
+  translateUI(document.getElementById('v-suppliers'));
 }
 function openSupplier(id){
   const s=id?S.suppliers.find(x=>x.id===id):{name:'',category:'',location:'',contact:'',notes:''};
@@ -748,6 +771,7 @@ function renderRequests(){
     <td><span class="st st-${reqSt(r.status)}">${esc(r.status||'Submitted')}</span></td>
     <td class="right"><button class="btn sm ghost" onclick="openRequest('${r.id}')">Open</button></td></tr>`).join('');
   document.getElementById('rqempty').innerHTML=rows.length?'':'<div class="empty">No requests yet — buyers can submit one in the form above.</div>';
+  translateUI(document.getElementById('v-requests'));
 }
 async function submitRequest(){
   const g=i=>document.getElementById(i).value.trim();
@@ -821,7 +845,7 @@ function exportQuoteSheet(){
 function backup(){download('interpoint-backup-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(S,null,2),'application/json')}
 
 /* ---------- RFQ builder: you pick products; export with images + description, EN/中文 ---------- */
-function updatePickbar(){const el=document.getElementById('pickCount');if(el)el.textContent=rfqPick.size+' selected';}
+function updatePickbar(){const el=document.getElementById('pickCount');if(el)el.textContent=rfqPick.size+(UILANG==='zh'?' 项已选':' selected');}
 function togglePick(id){rfqPick.has(id)?rfqPick.delete(id):rfqPick.add(id);updatePickbar();}
 function clearPicks(){rfqPick.clear();renderProducts();}
 function pickAllVisible(on){lastFilteredIds.forEach(id=>on?rfqPick.add(id):rfqPick.delete(id));renderProducts();}
