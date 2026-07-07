@@ -138,8 +138,9 @@
     <button data-v="data">Import / Export</button>
   </nav>
   <div class="userbox">
-    <select id="uiLang" onchange="applyUILang(this.value)" title="Interface language" style="background:rgba(255,255,255,.15);color:#fff;border:0;border-radius:6px;padding:5px 8px;font-size:12.5px;cursor:pointer">
-      <option value="en">EN</option><option value="zh">中文</option></select>
+    <span id="langtoggle" style="display:inline-flex;gap:2px;font-size:12.5px;background:rgba(255,255,255,.12);border-radius:6px;padding:2px">
+      <span data-l="en" onclick="applyUILang('en')" style="cursor:pointer;padding:4px 9px;border-radius:5px">EN</span>
+      <span data-l="zh" onclick="applyUILang('zh')" style="cursor:pointer;padding:4px 9px;border-radius:5px">中文</span></span>
     <span class="syncdot" id="syncdot" title="Live sync"></span>
     <span style="color:#9db4cc">Live</span>
   </div>
@@ -312,8 +313,8 @@ const UITEXT={
   "Products with a quote":"已有报价的产品","Quotes logged":"已记录报价","Best-quote order value":"最优报价订单额","Shipments":"运单","Buyer requests":"买家需求",
   "New":"新","RFQ sent":"已发询价","Quoted":"已报价","Sampling":"打样中","Approved":"已批准","Ordered":"已下单","On hold":"暂缓",
   "products":"件产品","Nothing pending. 🎉":"暂无待办 🎉",
-  "Request":"申请","Edit":"编辑","+ Quote":"+ 报价","Open":"打开","✕ quote":"✕ 报价","Delete":"删除","Save":"保存","Cancel":"取消","Save changes":"保存更改","Add product":"添加产品","Add quote":"添加报价","Save quote":"保存报价","Delete quote":"删除报价","Delete product":"删除产品","Add supplier":"添加供应商","Add buyer":"添加买家","Add provider":"添加服务商","Add shipment":"添加运单","Submit request":"提交申请","Build RFQ list ▸":"生成询价单 ▸","Clear":"清空","⬇ Generate & download":"⬇ 生成并下载","🔗 Copy shareable link":"🔗 复制分享链接","⬇ Download quote sheet (CSV)":"⬇ 下载报价表(CSV)","⬇ Download backup (.json)":"⬇ 下载备份(.json)","Import to cloud":"导入到云端",
-  "Edit product":"编辑产品","Edit quote":"编辑报价","Edit supplier":"编辑供应商","Add transport provider":"添加物流服务商","Edit provider":"编辑服务商","Edit shipment":"编辑运单","Edit buyer":"编辑买家","Build RFQ list":"生成询价单","Request this product":"申请此产品",
+  "Request":"询价","Edit":"编辑","+ Quote":"+ 报价","Open":"打开","✕ quote":"✕ 报价","Delete":"删除","Save":"保存","Cancel":"取消","Save changes":"保存更改","Add product":"添加产品","Add quote":"添加报价","Save quote":"保存报价","Delete quote":"删除报价","Delete product":"删除产品","Add supplier":"添加供应商","Add buyer":"添加买家","Add provider":"添加服务商","Add shipment":"添加运单","Submit request":"提交申请","Build RFQ list ▸":"生成询价单 ▸","Clear":"清空","⬇ Generate & download":"⬇ 生成并下载","🔗 Copy shareable link":"🔗 复制分享链接","⬇ Download quote sheet (CSV)":"⬇ 下载报价表(CSV)","⬇ Download backup (.json)":"⬇ 下载备份(.json)","Import to cloud":"导入到云端",
+  "Edit product":"编辑产品","Edit quote":"编辑报价","Edit supplier":"编辑供应商","Add transport provider":"添加物流服务商","Edit provider":"编辑服务商","Edit shipment":"编辑运单","Edit buyer":"编辑买家","Build RFQ list":"生成询价单","Request this product":"询价此产品","Submit request":"提交询价",
   "Product name * (original)":"产品名称 *（原文）","Name (English)":"名称（英文）","Reference":"编号","Target price (€)":"目标价（€）","Specs / requirements (description)":"规格 / 要求（描述）","Image URL":"图片链接","Product page URL":"产品页面链接",
   "Unit price (€) *":"单价（€）*","MOQ":"最小起订量","Lead time":"交货期","Incoterm":"贸易术语","Sample cost (€)":"样品费（€）","Notes (quality, packaging, validity…)":"备注（质量、包装、有效期…）","Price":"价格","Lead":"交货","Sample":"样品",
   "Supplier / factory name *":"供应商 / 工厂名称 *","Main category":"主要品类","Contact (person, WeChat, email, phone)":"联系方式（人员、微信、邮箱、电话）","Notes (certifications, verification…)":"备注（认证、核验…）",
@@ -330,6 +331,7 @@ const UITEXT={
 let UILANG=localStorage.getItem('ui_lang')||'en';
 function UI(s){return (UILANG==='zh'&&UITEXT[s]!==undefined)?UITEXT[s]:s;}
 function tzh(t){if(UITEXT[t]!==undefined)return UITEXT[t];if(I18N.cat&&I18N.cat[t])return I18N.cat[t].zh;if(I18N.sub&&I18N.sub[t])return I18N.sub[t].zh;return undefined;}
+function dSpecs(p){return (UILANG==='zh')?descByLang(p,'zh'):(p.specs||'');}
 /* Translate UI leaves. Captures original English once (data-en) so switching back restores it. Idempotent. */
 function translateUI(root){
   (root||document).querySelectorAll('#mobnav option, h2.title, p.sub, button, th, label, option, summary, h3, .l, .st, .tag, .empty, .hint').forEach(el=>{
@@ -342,7 +344,7 @@ function translateUI(root){
 }
 function applyUILang(l){
   UILANG=(l==='zh')?'zh':'en'; localStorage.setItem('ui_lang',UILANG);
-  const sel=document.getElementById('uiLang'); if(sel)sel.value=UILANG;
+  document.querySelectorAll('#langtoggle [data-l]').forEach(s=>{const on=s.dataset.l===UILANG;s.style.background=on?'#fff':'transparent';s.style.color=on?'#0f2740':'#cfe0f0';});
   renderAll();
 }
 let rfqPick=new Set(), lastFilteredIds=[];
@@ -521,7 +523,7 @@ function renderProducts(){
     const b=bestQuote(p.id);const qs=S.quotes.filter(q=>q.productId===p.id);
     return `<tr><td><input type="checkbox" ${rfqPick.has(p.id)?'checked':''} onclick="togglePick('${p.id}')"></td>
       <td class="nowrap muted">${esc(p.ref||'')}</td>
-      <td>${p.image?`<a href="${esc(p.image)}" target="_blank" rel="noopener" title="Open image"><img src="${esc(p.image)}" loading="lazy" style="width:34px;height:34px;object-fit:cover;border-radius:5px;border:1px solid var(--line);float:left;margin-right:8px"></a>`:''}${p.url?`<a class="plink" href="${esc(p.url)}" target="_blank" rel="noopener" title="Open product page (full description)"><b>${esc(p.name)}</b></a>`:`<b>${esc(p.name)}</b>`}${p.nameZh?`<div style="font-size:11.5px;color:#1a2433">${esc(p.nameZh)}</div>`:''}${p.nameEn?`<div class="muted" style="font-size:11.5px">${esc(p.nameEn)}</div>`:''}${p.specs?`<div class="muted" style="font-size:12px;max-width:280px">${esc(p.specs)}</div>`:''}${qs.length?`<details><summary>${qs.length} quote${qs.length>1?'s':''}</summary>${quotesTable(p.id)}</details>`:''}</td>
+      <td>${p.image?`<a href="${esc(p.image)}" target="_blank" rel="noopener" title="Open image"><img src="${esc(p.image)}" loading="lazy" style="width:34px;height:34px;object-fit:cover;border-radius:5px;border:1px solid var(--line);float:left;margin-right:8px"></a>`:''}${p.url?`<a class="plink" href="${esc(p.url)}" target="_blank" rel="noopener" title="Open product page (full description)"><b>${esc(p.name)}</b></a>`:`<b>${esc(p.name)}</b>`}${p.nameZh?`<div style="font-size:11.5px;color:#1a2433">${esc(p.nameZh)}</div>`:''}${p.nameEn?`<div class="muted" style="font-size:11.5px">${esc(p.nameEn)}</div>`:''}${p.specs?`<div class="muted" style="font-size:12px;max-width:280px">${esc(dSpecs(p))}</div>`:''}${qs.length?`<details><summary>${qs.length} quote${qs.length>1?'s':''}</summary>${quotesTable(p.id)}</details>`:''}</td>
       <td><span class="tag ${catCls(p.category)}">${esc(p.category)}</span></td><td>${esc(buyerName(p.buyerId))}</td>
       <td class="right">${p.qty?Number(p.qty).toLocaleString():'—'}</td><td class="right muted">${p.target!=null?money(p.target):'—'}</td>
       <td class="right ${b?'best':''}">${b?money(b.price):'—'}${b?`<div class="muted" style="font-size:11px;font-weight:400">${esc(supName(b.supplierId))}</div>`:''}</td>
@@ -764,7 +766,7 @@ function renderRequests(){
   document.getElementById('rqbody').innerHTML=rows.map(r=>`<tr>
     <td class="nowrap muted" style="font-size:12px">${r.created?esc(String(r.created).slice(0,10)):''}</td>
     <td><b>${esc(r.buyer||'')}</b></td>
-    <td>${reqImg(r)}<b>${esc(r.item)}</b>${r.specs?`<div class="muted" style="font-size:12px;max-width:280px">${esc(r.specs)}</div>`:''}</td>
+    <td>${reqImg(r)}<b>${esc(r.item)}</b>${r.specs?`<div class="muted" style="font-size:12px;max-width:280px">${esc(dSpecs(r))}</div>`:''}</td>
     <td>${r.category?`<span class="tag ${catCls(r.category)}">${esc(r.category)}</span>`:'—'}</td>
     <td class="right">${r.qty?Number(r.qty).toLocaleString():'—'}</td>
     <td class="right">${r.target!=null?money(r.target):'—'}</td>
