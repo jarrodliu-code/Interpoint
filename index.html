@@ -326,19 +326,22 @@ const UITEXT={
   "Medical":"医疗","Hotel Furniture & Supply":"酒店家具与用品","Electronics":"电子产品","Cold Storage":"冷藏","Other":"其他",
   "Submitted":"已提交","Reviewing":"审核中","Sourcing":"寻源中","Closed":"已关闭",
   "First row is a header":"首行为表头","Default category if blank":"若为空则默认此品类","Backup":"备份",
+  "Sea":"海运","Air":"空运","Truck":"卡车","Rail":"铁路","Courier":"快递","Multimodal":"多式联运",
+  "Booked":"已订舱","In transit":"运输中","Arrived":"已到达","Hold":"暂缓","Quote":"报价",
   "No products match.":"没有匹配的产品。","No suppliers yet.":"暂无供应商。","No buyers yet.":"暂无买家。","No transport providers yet. Add your freight forwarders.":"暂无物流服务商，请添加货代。","No shipments yet.":"暂无运单。","No requests yet — buyers can submit one in the form above.":"暂无需求 —— 买家可在上方表单提交。","No products yet.":"暂无产品。"
 };
 let UILANG=localStorage.getItem('ui_lang')||'en';
 function UI(s){return (UILANG==='zh'&&UITEXT[s]!==undefined)?UITEXT[s]:s;}
 function tzh(t){if(UITEXT[t]!==undefined)return UITEXT[t];if(I18N.cat&&I18N.cat[t])return I18N.cat[t].zh;if(I18N.sub&&I18N.sub[t])return I18N.sub[t].zh;return undefined;}
 function dSpecs(p){return (UILANG==='zh')?descByLang(p,'zh'):(p.specs||'');}
+function Lz(x){const z=tzh(x);return (UILANG==='zh'&&z!==undefined)?z:x;}
 /* Translate UI leaves. Captures original English once (data-en) so switching back restores it. Idempotent. */
 function translateUI(root){
   (root||document).querySelectorAll('#mobnav option, h2.title, p.sub, button, th, label, option, summary, h3, .l, .st, .tag, .empty, .hint').forEach(el=>{
     if(el.children.length)return;
     if(el.dataset.en===undefined)el.dataset.en=el.textContent.trim();
     const en=el.dataset.en, z=tzh(en), target=(UILANG==='zh'&&z!==undefined)?z:en;
-    if(el.tagName==='OPTION'&&!el.getAttribute('value'))el.setAttribute('value',en);
+    if(el.tagName==='OPTION'&&el.getAttribute('value')===null)el.setAttribute('value',en);
     if(el.textContent!==target)el.textContent=target;
   });
 }
@@ -490,18 +493,19 @@ function msubOf(p){if(!p.specs)return '';const s=(p.specs.split(' · ')[1]||'').
 function fillSubFilter(){
   const cat=document.getElementById('pmcat').value, cur=document.getElementById('pmsub').value;
   const subs=[...new Set(S.products.filter(p=>!cat||mcatOf(p)===cat).map(msubOf).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-  document.getElementById('pmsub').innerHTML='<option value="">All sub-categories</option>'+subs.map(s=>`<option ${s===cur?'selected':''}>${esc(s)}</option>`).join('');
+  document.getElementById('pmsub').innerHTML=`<option value="">${esc(Lz('All sub-categories'))}</option>`+subs.map(s=>`<option value="${esc(s)}" ${s===cur?'selected':''}>${esc(Lz(s))}</option>`).join('');
 }
 function catChanged(){document.getElementById('pmsub').value='';fillSubFilter();renderProducts();}
 function fillFilters(){
   const sel=id=>document.getElementById(id);
-  sel('pcat').innerHTML='<option value="">All categories</option>'+CATS.map(c=>`<option>${c.k}</option>`).join('');
-  sel('impCat').innerHTML=CATS.map(c=>`<option>${c.k}</option>`).join('');
-  sel('rq_cat').innerHTML=CATS.map(c=>`<option>${c.k}</option>`).join('');
-  sel('pstat').innerHTML='<option value="">All statuses</option>'+STATUSES.map(s=>`<option value="${s}">${STLABEL[s]}</option>`).join('');
-  sel('pbuyer').innerHTML='<option value="">All buyers</option>'+S.buyers.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');
+  const co=c=>`<option value="${esc(c)}">${esc(Lz(c))}</option>`;
+  sel('pcat').innerHTML=`<option value="">${esc(Lz('All categories'))}</option>`+CATS.map(c=>co(c.k)).join('');
+  sel('impCat').innerHTML=CATS.map(c=>co(c.k)).join('');
+  sel('rq_cat').innerHTML=CATS.map(c=>co(c.k)).join('');
+  sel('pstat').innerHTML=`<option value="">${esc(Lz('All statuses'))}</option>`+STATUSES.map(s=>`<option value="${s}">${esc(Lz(STLABEL[s]))}</option>`).join('');
+  sel('pbuyer').innerHTML=`<option value="">${esc(Lz('All buyers'))}</option>`+S.buyers.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');
   const curM=sel('pmcat').value, mcats=[...new Set(S.products.map(mcatOf).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-  sel('pmcat').innerHTML='<option value="">All categories</option>'+mcats.map(m=>`<option ${m===curM?'selected':''}>${esc(m)}</option>`).join('');
+  sel('pmcat').innerHTML=`<option value="">${esc(Lz('All categories'))}</option>`+mcats.map(m=>`<option value="${esc(m)}" ${m===curM?'selected':''}>${esc(Lz(m))}</option>`).join('');
   fillSubFilter();
   sel('expBuyer').innerHTML='<option value="">All buyers (full list)</option>'+S.buyers.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');
 }
