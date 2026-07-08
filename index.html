@@ -134,7 +134,7 @@
     <button data-v="transport">Transport</button>
     <button data-v="suppliers">Suppliers</button>
     <button data-v="buyers">Buyers</button>
-    <button data-v="requests">Requests</button>
+    <span style="position:relative;display:inline-flex;align-items:center"><button data-v="requests">Requests</button><span id="reqBadge" style="position:absolute;top:0;right:2px;background:#e5484d;color:#fff;border-radius:10px;min-width:16px;height:16px;font-size:10px;font-weight:700;line-height:16px;text-align:center;padding:0 3px;display:none"></span></span>
     <button data-v="data">Import / Export</button>
   </nav>
   <div class="userbox">
@@ -239,7 +239,7 @@
       <button class="btn green" onclick="submitRequest()">Submit requirement</button>
       <div id="rqResult" class="hint" style="margin-top:10px"></div>
     </div></div>
-    <div class="panel"><div class="ph"><h3>② Submitted requirements</h3><span class="muted" style="margin-left:auto;font-size:12px">Newest first</span></div>
+    <div class="panel"><div class="ph"><h3>② Submitted requirements</h3><button class="btn sm ghost" style="margin-left:auto" onclick="enableAlerts()">🔔 Enable desktop alerts</button><span class="muted" style="font-size:12px;margin-left:8px">Newest first</span></div>
       <div class="pb" style="padding:0;overflow:auto">
         <table><thead><tr><th>Date</th><th>Buyer</th><th>Item</th><th>Category</th><th class="right">Qty</th><th class="right">Target</th><th>Status</th><th></th></tr></thead>
         <tbody id="rqbody"></tbody></table><div id="rqempty"></div></div></div>
@@ -328,6 +328,7 @@ const UITEXT={
   "First row is a header":"首行为表头","Default category if blank":"若为空则默认此品类","Backup":"备份",
   "Sea":"海运","Air":"空运","Truck":"卡车","Rail":"铁路","Courier":"快递","Multimodal":"多式联运",
   "Booked":"已订舱","In transit":"运输中","Arrived":"已到达","Hold":"暂缓","Quote":"报价",
+  "🔔 Enable desktop alerts":"🔔 开启桌面提醒","Newest first":"最新在前",
   "No products match.":"没有匹配的产品。","No suppliers yet.":"暂无供应商。","No buyers yet.":"暂无买家。","No transport providers yet. Add your freight forwarders.":"暂无物流服务商，请添加货代。","No shipments yet.":"暂无运单。","No requests yet — buyers can submit one in the form above.":"暂无需求 —— 买家可在上方表单提交。","No products yet.":"暂无产品。"
 };
 let UILANG=localStorage.getItem('ui_lang')||'en';
@@ -451,6 +452,7 @@ function subscribe(){
         const map=t==='products'?prodFromRow:t==='quotes'?quoteFromRow:t==='shipments'?shipmentFromRow:t==='requests'?requestFromRow:(x=>x);
         if(payload.eventType==='DELETE'){removeLocal(t,payload.old.id)}
         else{upsertLocal(t,map(payload.new))}
+        if(t==='requests'&&payload.eventType==='INSERT')notifyNewRequest(payload.new);
       }else if(t==='settings'&&payload.new){S.brand=payload.new.brand;S.brandSub=payload.new.brand_sub}
       debouncedRender();
     })
@@ -746,6 +748,21 @@ async function delShipment(id){
 }
 
 /* ---------- procurement requests (buyer self-input) ---------- */
+let justCreatedReq=new Set();
+function updateReqBadge(){const n=S.requests.filter(r=>r.status==='Submitted').length;const b=document.getElementById('reqBadge');if(!b)return;if(n>0){b.textContent=n>99?'99+':n;b.style.display='block';}else{b.style.display='none';}}
+let titleFlash=null;
+function flashTitle(msg){clearInterval(titleFlash);const orig=S.brand||'Interpoint';let on=false;titleFlash=setInterval(()=>{document.title=on?orig:msg;on=!on;},1000);const stop=()=>{clearInterval(titleFlash);document.title=orig;window.removeEventListener('focus',stop);};window.addEventListener('focus',stop);}
+function beep(){try{const c=new (window.AudioContext||window.webkitAudioContext)();const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=880;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(660,c.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.45);o.stop(c.currentTime+0.45);}catch(e){}}
+function toast(html){let t=document.getElementById('toastbox');if(!t){t=document.createElement('div');t.id='toastbox';t.style.cssText='position:fixed;top:74px;right:16px;z-index:300;display:flex;flex-direction:column;gap:8px';document.body.appendChild(t);}const el=document.createElement('div');el.style.cssText='background:#0f2740;color:#fff;padding:12px 15px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.28);font-size:13.5px;max-width:300px;cursor:pointer';el.innerHTML=html;el.onclick=()=>{show('requests');el.remove();};t.appendChild(el);setTimeout(()=>{el.style.transition='opacity .4s';el.style.opacity='0';setTimeout(()=>el.remove(),400);},9000);}
+function notifyNewRequest(row){
+  if(!row)return;
+  if(justCreatedReq.has(row.id)){justCreatedReq.delete(row.id);return;}
+  const who=esc(row.buyer_name||'—'), item=esc(row.item||'');
+  const title=UILANG==='zh'?'新采购需求':'New procurement request';
+  beep(); toast(`🔔 <b>${title}</b><br>${who}: ${item}`); flashTitle('🔔 '+title);
+  if('Notification' in window && Notification.permission==='granted'){try{new Notification(title,{body:(row.buyer_name||'')+': '+(row.item||'')});}catch(e){}}
+}
+function enableAlerts(){if('Notification' in window)Notification.requestPermission().then(()=>renderRequests());}
 function reqSt(s){return {Submitted:'New',Reviewing:'RFQ',Sourcing:'Sampling',Quoted:'Quoted',Closed:'Ordered'}[s]||'New'}
 function reqImg(r){if(r.productId){const p=S.products.find(x=>x.id===r.productId);if(p&&p.image)return `<img src="${esc(p.image)}" loading="lazy" style="width:34px;height:34px;object-fit:cover;border-radius:5px;border:1px solid var(--line);float:left;margin-right:8px">`;}return '';}
 function openProductRequest(pid){
@@ -765,6 +782,7 @@ async function submitProductRequest(pid){
   const g=i=>document.getElementById(i).value.trim();
   const buyer=g('pr_buyer');if(!buyer){alert('Please enter your name / company.');return}
   const rec={id:uid('rq'),productId:pid,buyer,item:p.name,category:p.category,qty:num(g('pr_qty')),target:num(g('pr_target')),specs:p.specs,notes:g('pr_notes'),status:'Submitted'};
+  justCreatedReq.add(rec.id);
   const {error}=await db.from('requests').upsert(requestToRow(rec));
   if(error){alert('Could not submit: '+error.message+(/product_id|column/.test(error.message)?'\n\nRun: alter table requests add column if not exists product_id text;':''));return}
   rec.created=new Date().toISOString();upsertLocal('requests',rec);renderRequests();renderDash();closeModal();
@@ -782,13 +800,14 @@ function renderRequests(){
     <td><span class="st st-${reqSt(r.status)}">${esc(r.status||'Submitted')}</span></td>
     <td class="right"><button class="btn sm ghost" onclick="openRequest('${r.id}')">Open</button></td></tr>`).join('');
   document.getElementById('rqempty').innerHTML=rows.length?'':'<div class="empty">No requests yet — buyers can submit one in the form above.</div>';
-  translateUI(document.getElementById('v-requests'));
+  updateReqBadge();translateUI(document.getElementById('v-requests'));
 }
 async function submitRequest(){
   const g=i=>document.getElementById(i).value.trim();
   const buyer=g('rq_buyer'), item=g('rq_item'); const res=document.getElementById('rqResult');
   if(!buyer||!item){res.innerHTML='<span style="color:var(--danger)">Please fill in your name and the product needed.</span>';return}
   const rec={id:uid('rq'),buyer,item,category:g('rq_cat'),qty:num(g('rq_qty')),target:num(g('rq_target')),specs:g('rq_specs'),notes:g('rq_notes'),status:'Submitted'};
+  justCreatedReq.add(rec.id);
   const {error}=await db.from('requests').upsert(requestToRow(rec));
   if(error){res.innerHTML='<span style="color:var(--danger)">Could not submit: '+esc(error.message)+(/requests/.test(error.message)?'  — the Requests table needs requests.sql run once in Supabase.':'')+'</span>';return}
   rec.created=new Date().toISOString();upsertLocal('requests',rec);renderRequests();renderDash();
