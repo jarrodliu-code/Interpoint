@@ -881,7 +881,7 @@ function togglePick(id){rfqPick.has(id)?rfqPick.delete(id):rfqPick.add(id);updat
 function clearPicks(){rfqPick.clear();renderProducts();}
 function pickAllVisible(on){lastFilteredIds.forEach(id=>on?rfqPick.add(id):rfqPick.delete(id));renderProducts();}
 function rfqSelected(){return S.products.filter(p=>rfqPick.has(p.id));}
-const RFQ_SHARE_BASE='https://interpoint.github.io/Interpoint/rfq.html';
+const RFQ_SHARE_BASE='https://interpoint-sourcing.github.io/Interpoint/rfq.html';
 function copyRfqLink(){
   const items=rfqSelected();if(!items.length){alert('Select products first.');return;}
   const langs=rfqLangs();if(!langs.length){alert('Tick at least one language.');return;}
